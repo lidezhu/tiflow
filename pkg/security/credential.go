@@ -154,6 +154,9 @@ func ToTLSConfigWithVerify(
 		ClientCAs:  certPool,
 		NextProtos: []string{"h2", "http/1.1"}, // specify `h2` to let Go use HTTP/2.
 		MinVersion: tls.VersionTLS12,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+		},
 	}
 
 	if len(certPath) != 0 && len(keyPath) != 0 {
