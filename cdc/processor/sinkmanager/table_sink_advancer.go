@@ -238,9 +238,9 @@ func (a *tableSinkAdvancer) tryAdvanceAndAcquireMem(
 // If the commitTs is different from the current transaction, it means
 // the current transaction is finished. We need to move to the next transaction.
 func (a *tableSinkAdvancer) tryMoveToNextTxn(commitTs model.Ts) {
-	log.Debug("tryMoveToNextTxn", zap.Uint64("commitTs", commitTs))
+	log.Info("tryMoveToNextTxn", zap.Uint64("commitTs", commitTs))
 	if a.currTxnCommitTs != commitTs {
-		log.Debug("update transaction size", zap.Uint64("commitTs", commitTs))
+		log.Info("update transaction size", zap.Uint64("commitTs", commitTs))
 		// Record the last transaction commitTs and size.
 		a.lastTxnCommitTs = a.currTxnCommitTs
 		a.committedTxnSize += a.pendingTxnSize
