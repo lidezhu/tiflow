@@ -16,6 +16,8 @@ package internal
 import (
 	"math"
 	"sync"
+
+	"github.com/pingcap/failpoint"
 )
 
 type slot[E SlotNode[E]] struct {
@@ -66,6 +68,7 @@ func (s *Slots[E]) Add(elem E, keys []uint64) {
 		if lastSlot != slotIdx {
 			s.slots[slotIdx].mu.Lock()
 			lastSlot = slotIdx
+			failpoint.Inject("mock-sleep-after-lock", nil)
 		}
 		if tail, ok := s.slots[slotIdx].nodes[key]; ok {
 			prevID := tail.NodeID()

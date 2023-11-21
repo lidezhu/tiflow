@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingcap/failpoint"
 	"github.com/stretchr/testify/require"
 )
 
@@ -96,6 +97,31 @@ func TestSlotsConcurrentOps(t *testing.T) {
 				freeNodeChan <- newNode()
 			}
 		}
+	}()
+
+	wg.Wait()
+}
+
+func TestSlotsConcurrentAddSlot(t *testing.T) {
+	t.Parallel()
+	slots := NewSlots[*Node](4)
+	failpoint.Enable("github.com/pingcap/tiflow/pkg/causality/internal/mock-sleep-after-lock", "sleep(100)")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		node := NewNode()
+		node.RandWorkerID = func() workerID { return 100 }
+		slots.Add(node, []uint64{1, 2})
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		node := NewNode()
+		node.RandWorkerID = func() workerID { return 101 }
+		slots.Add(node, []uint64{2, 5})
 	}()
 
 	wg.Wait()
