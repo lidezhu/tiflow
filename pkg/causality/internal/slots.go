@@ -14,6 +14,7 @@
 package internal
 
 import (
+	"fmt"
 	"math"
 	"sync"
 
@@ -61,6 +62,9 @@ func NewSlots[E SlotNode[E]](numSlots uint64) *Slots[E] {
 func (s *Slots[E]) Add(elem E, keys []uint64) {
 	unresolvedDeps := make(map[int64]E, len(keys))
 	resolvedDeps := 0
+	failpoint.Inject("slot-print-value", func(val failpoint.Value) {
+		fmt.Printf("mock %v\n", val.(string))
+	})
 
 	var lastSlot uint64 = math.MaxUint64
 	for _, key := range keys {

@@ -126,3 +126,20 @@ func TestSlotsConcurrentAddSlot(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestFailpointReturn(t *testing.T) {
+	t.Parallel()
+	slots := NewSlots[*Node](4)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		node := NewNode()
+		node.RandWorkerID = func() workerID { return 100 }
+		failpoint.Enable("github.com/pingcap/tiflow/pkg/causality/internal/slot-print-value", "return(\"print value\")")
+		slots.Add(node, []uint64{1, 2})
+	}()
+
+	wg.Wait()
+}
