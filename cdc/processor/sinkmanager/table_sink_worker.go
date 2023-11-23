@@ -146,6 +146,17 @@ func (w *sinkWorker) handleTask(ctx context.Context, task *sinkTask) (finalErr e
 	allEventCount := 0
 	// lowerBound and upperBound are both closed intervals.
 	iter := w.sourceManager.FetchByTable(task.span, lowerBound, upperBound, w.sinkMemQuota)
+	log.Info("Sink task start",
+		zap.String("namespace", w.changefeedID.Namespace),
+		zap.String("changefeed", w.changefeedID.ID),
+		zap.Stringer("span", &task.span),
+		zap.Any("lowerBound", lowerBound),
+		zap.Any("upperBound", upperBound),
+		zap.Bool("splitTxn", w.splitTxn),
+		zap.Int("receivedEvents", allEventCount),
+		zap.Any("lastPos", advancer.lastPos),
+		zap.Float64("lag", time.Since(oracle.GetTimeFromTS(advancer.lastPos.CommitTs)).Seconds()),
+		zap.Error(finalErr))
 
 	defer func() {
 		// Collect metrics.
@@ -165,7 +176,7 @@ func (w *sinkWorker) handleTask(ctx context.Context, task *sinkTask) (finalErr e
 				zap.Stringer("span", &task.span),
 				zap.Error(err))
 		}
-		log.Debug("Sink task finished",
+		log.Info("Sink task finished",
 			zap.String("namespace", w.changefeedID.Namespace),
 			zap.String("changefeed", w.changefeedID.ID),
 			zap.Stringer("span", &task.span),

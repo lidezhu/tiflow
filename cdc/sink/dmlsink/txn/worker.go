@@ -15,9 +15,12 @@ package txn
 
 import (
 	"context"
+	"database/sql/driver"
+	"errors"
 	"fmt"
 	"time"
 
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/log"
 	"github.com/pingcap/tiflow/cdc/model"
 	"github.com/pingcap/tiflow/cdc/sink/metrics/txn"
@@ -134,11 +137,19 @@ func (w *worker) runLoop() error {
 		}
 		if needFlush {
 			if err := w.doFlush(&flushTimeSlice); err != nil {
-				log.Error("Transaction dmlSink worker exits unexpectly",
-					zap.String("changefeedID", w.changefeed),
-					zap.Int("workerID", w.ID),
-					zap.Error(err))
-				return err
+				if !errors.Is(perrors.Cause(err), driver.ErrBadConn) {
+					log.Error("Transaction dmlSink worker exits unexpectly",
+						zap.String("changefeedID", w.changefeed),
+						zap.Int("workerID", w.ID),
+						zap.Error(err))
+					return err
+				} else {
+					// cannot connect to downstream, try it later
+					log.Warn("Transaction dmlSink fail to flush due to bad connection, try it later",
+						zap.String("changefeedID", w.changefeed),
+						zap.Int("workerID", w.ID),
+						zap.Error(err))
+				}
 			}
 			needFlush = false
 		}

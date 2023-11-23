@@ -203,6 +203,9 @@ func NewMySQLBackends(
 // OnTxnEvent implements interface backend.
 // It adds the event to the buffer, and return true if it needs flush immediately.
 func (s *mysqlBackend) OnTxnEvent(event *dmlsink.TxnCallbackableEvent) (needFlush bool) {
+	log.Info("receive event",
+		zap.Int("workerID", s.workerID),
+		zap.Int64("commitTS", int64(event.Event.CommitTs)))
 	s.events = append(s.events, event)
 	s.rows += len(event.Event.Rows)
 	return event.Event.ToWaitFlush() || s.rows >= s.cfg.MaxTxnRow
@@ -226,7 +229,7 @@ func (s *mysqlBackend) Flush(ctx context.Context) (err error) {
 	}
 
 	dmls := s.prepareDMLs()
-	log.Debug("prepare DMLs", zap.Any("rows", s.rows),
+	log.Info("prepare DMLs", zap.Any("rows", s.rows),
 		zap.Strings("sqls", dmls.sqls), zap.Any("values", dmls.values))
 
 	start := time.Now()

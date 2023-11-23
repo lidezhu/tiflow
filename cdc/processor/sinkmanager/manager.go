@@ -421,6 +421,9 @@ func (m *SinkManager) generateSinkTasks(ctx context.Context) error {
 	dispatchTasks := func() error {
 		tables := make([]*tableSinkWrapper, 0, sinkWorkerNum)
 		progs := make([]*progress, 0, sinkWorkerNum)
+		log.Info("Begin to dispatchTasks",
+			zap.Int64("sinkWorkerNum", sinkWorkerNum),
+			zap.Int("sinkProgressHeapLen", m.sinkProgressHeap.len()))
 
 		// Collect some table progresses.
 		for len(tables) < sinkWorkerNum && m.sinkProgressHeap.len() > 0 {
