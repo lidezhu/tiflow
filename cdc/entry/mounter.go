@@ -353,7 +353,7 @@ func datum2Column(
 
 		colName := colInfo.Name.O
 		colID := colInfo.ID
-		colDatums, exist := datums[colID]
+		colDatum, exist := datums[colID]
 
 		var (
 			colValue interface{}
@@ -362,9 +362,9 @@ func datum2Column(
 			err      error
 		)
 		if exist {
-			colValue, size, warn, err = formatColVal(colDatums, colInfo)
+			colValue, size, warn, err = formatColVal(colDatum, colInfo)
 		} else {
-			colDatums, colValue, size, warn, err = getDefaultOrZeroValue(colInfo)
+			colDatum, colValue, size, warn, err = getDefaultOrZeroValue(colInfo)
 		}
 		if err != nil {
 			return nil, nil, nil, nil, errors.Trace(err)
@@ -376,7 +376,7 @@ func datum2Column(
 
 		defaultValue := GetColumnDefaultValue(colInfo)
 		offset := tableInfo.RowColumnsOffset[colID]
-		rawCols[offset] = colDatums
+		rawCols[offset] = colDatum
 		cols[offset] = &model.Column{
 			Name:      colName,
 			Type:      colInfo.GetType(),
