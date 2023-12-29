@@ -74,8 +74,8 @@ func genTxnKeys(txn *model.SingleTableTxn) []uint64 {
 func genRowKeys(row *model.RowChangedEvent) [][]byte {
 	var keys [][]byte
 	if len(row.Columns) != 0 {
-		for iIdx, idxCol := range row.IndexColumns {
-			key := genKeyList(row.Columns, iIdx, idxCol, row.Table.TableID)
+		for iIdx, idxCol := range row.TableInfo.IndexColumnsOffset {
+			key := genKeyList(model.ColumnDatas2Columns(row.Columns, row.TableInfo), iIdx, idxCol, row.Table.TableID)
 			if len(key) == 0 {
 				continue
 			}
@@ -83,8 +83,8 @@ func genRowKeys(row *model.RowChangedEvent) [][]byte {
 		}
 	}
 	if len(row.PreColumns) != 0 {
-		for iIdx, idxCol := range row.IndexColumns {
-			key := genKeyList(row.PreColumns, iIdx, idxCol, row.Table.TableID)
+		for iIdx, idxCol := range row.TableInfo.IndexColumnsOffset {
+			key := genKeyList(model.ColumnDatas2Columns(row.PreColumns, row.TableInfo), iIdx, idxCol, row.Table.TableID)
 			if len(key) == 0 {
 				continue
 			}

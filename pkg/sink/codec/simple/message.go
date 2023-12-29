@@ -25,8 +25,6 @@ import (
 	"github.com/pingcap/tidb/pkg/parser/mysql"
 	"github.com/pingcap/tidb/pkg/parser/types"
 	tiTypes "github.com/pingcap/tidb/pkg/types"
-	"github.com/pingcap/tidb/pkg/util/rowcodec"
-	"github.com/pingcap/tiflow/cdc/entry"
 	"github.com/pingcap/tiflow/cdc/model"
 	cerror "github.com/pingcap/tiflow/pkg/errors"
 	"github.com/pingcap/tiflow/pkg/sink/codec/common"
@@ -102,7 +100,7 @@ func newColumnSchema(col *timodel.ColumnInfo) *columnSchema {
 		Name:     col.Name.O,
 		DataType: tp,
 		Nullable: !mysql.HasNotNullFlag(col.GetFlag()),
-		Default:  entry.GetColumnDefaultValue(col),
+		Default:  model.GetColumnDefaultValue(col),
 	}
 }
 
@@ -337,8 +335,8 @@ func buildRowChangedEvent(msg *message, tableInfo *model.TableInfo) (*model.RowC
 	return result, nil
 }
 
-func decodeColumns(rawData map[string]interface{}, fieldTypeMap map[string]*types.FieldType) ([]*model.Column, error) {
-	var result []*model.Column
+func decodeColumns(rawData map[string]interface{}, fieldTypeMap map[string]*types.FieldType) ([]*model.ColumnData, error) {
+	var result []*model.ColumnData
 	for name, value := range rawData {
 		fieldType, ok := fieldTypeMap[name]
 		if !ok {
@@ -445,23 +443,23 @@ func newDMLMessage(
 	var err error
 	if event.IsInsert() {
 		m.Type = InsertType
-		m.Data, err = formatColumns(event.Columns, event.ColInfos, onlyHandleKey)
+		m.Data, err = formatColumns(event.Columns, event, onlyHandleKey)
 		if err != nil {
 			return nil, err
 		}
 	} else if event.IsDelete() {
 		m.Type = DeleteType
-		m.Old, err = formatColumns(event.PreColumns, event.ColInfos, onlyHandleKey)
+		m.Old, err = formatColumns(event.PreColumns, event, onlyHandleKey)
 		if err != nil {
 			return nil, err
 		}
 	} else if event.IsUpdate() {
 		m.Type = UpdateType
-		m.Data, err = formatColumns(event.Columns, event.ColInfos, onlyHandleKey)
+		m.Data, err = formatColumns(event.Columns, event, onlyHandleKey)
 		if err != nil {
 			return nil, err
 		}
-		m.Old, err = formatColumns(event.PreColumns, event.ColInfos, onlyHandleKey)
+		m.Old, err = formatColumns(event.PreColumns, event, onlyHandleKey)
 		if err != nil {
 			return nil, err
 		}
@@ -473,21 +471,22 @@ func newDMLMessage(
 }
 
 func formatColumns(
-	columns []*model.Column, columnInfos []rowcodec.ColInfo, onlyHandleKey bool,
+	columns []*model.ColumnData, event *model.RowChangedEvent, onlyHandleKey bool,
 ) (map[string]interface{}, error) {
 	result := make(map[string]interface{}, len(columns))
-	for idx, col := range columns {
+	for _, col := range columns {
 		if col == nil {
 			continue
 		}
-		if onlyHandleKey && !col.Flag.IsHandleKey() {
+		flag := event.ForceGetColumnFlagType(col.ColumnID)
+		if onlyHandleKey && !flag.IsHandleKey() {
 			continue
 		}
-		value, err := encodeValue(col.Value, columnInfos[idx].Ft)
+		value, err := encodeValue(col.Value, event.ForceGetExtraColumnInfo(col.ColumnID).Ft)
 		if err != nil {
 			return nil, err
 		}
-		result[col.Name] = value
+		result[event.ForceGetColumnName(col.ColumnID)] = value
 	}
 	return result, nil
 }
@@ -566,13 +565,11 @@ func encodeValue(value interface{}, ft *types.FieldType) (interface{}, error) {
 	return result, nil
 }
 
-func decodeColumn(name string, value interface{}, fieldType *types.FieldType) (*model.Column, error) {
-	result := &model.Column{
-		Type:      fieldType.GetType(),
-		Charset:   fieldType.GetCharset(),
-		Collation: fieldType.GetCollate(),
-		Name:      name,
-		Value:     value,
+func decodeColumn(name string, value interface{}, fieldType *types.FieldType) (*model.ColumnData, error) {
+	// FIXME: fix column id
+	result := &model.ColumnData{
+		ColumnID: 0,
+		Value:    value,
 	}
 	if value == nil {
 		return result, nil

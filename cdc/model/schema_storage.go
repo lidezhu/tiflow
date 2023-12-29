@@ -16,11 +16,14 @@ package model
 import (
 	"fmt"
 
+	"github.com/pingcap/log"
 	"github.com/pingcap/tidb/pkg/parser/model"
 	"github.com/pingcap/tidb/pkg/parser/mysql"
 	"github.com/pingcap/tidb/pkg/parser/types"
 	"github.com/pingcap/tidb/pkg/table/tables"
+	datumTypes "github.com/pingcap/tidb/pkg/types"
 	"github.com/pingcap/tidb/pkg/util/rowcodec"
+	"go.uber.org/zap"
 )
 
 const (
@@ -46,7 +49,8 @@ type TableInfo struct {
 	// So be careful when using the TableInfo.
 	TableName TableName
 	// Version record the tso of create the table info.
-	Version       uint64
+	Version uint64
+	// ColumnID -> offset in model.TableInfo.Columns
 	columnsOffset map[int64]int
 	indicesOffset map[int64]int
 
@@ -338,6 +342,25 @@ func (ti *TableInfo) GetIndex(name string) *model.IndexInfo {
 	return nil
 }
 
+func (ti *TableInfo) ForceGetColumnIDByName(name string) int64 {
+	for _, columnInfo := range ti.Columns {
+		if columnInfo.Name.O == name {
+			return columnInfo.ID
+		}
+	}
+	log.Panic("invalid column name", zap.String("columnName", name))
+	return 0
+}
+
+func (ti *TableInfo) GetColumnInfoByID(columnID int64) *model.ColumnInfo {
+	for _, columnInfo := range ti.Columns {
+		if columnInfo.ID == columnID {
+			return columnInfo
+		}
+	}
+	return nil
+}
+
 // IndexByName returns the index columns and offsets of the corresponding index by name
 func (ti *TableInfo) IndexByName(name string) ([]string, []int, bool) {
 	index := ti.GetIndex(name)
@@ -397,4 +420,23 @@ func (ti *TableInfo) GetPrimaryKeyColumnNames() map[string]struct{} {
 		}
 	}
 	return result
+}
+
+// GetColumnDefaultValue returns the default definition of a column.
+func GetColumnDefaultValue(col *model.ColumnInfo) interface{} {
+	defaultValue := col.GetDefaultValue()
+	if defaultValue == nil {
+		defaultValue = col.GetOriginDefaultValue()
+	}
+	defaultDatum := datumTypes.NewDatum(defaultValue)
+	return defaultDatum.GetValue()
+}
+
+func GetColumnInfoByID(tableInfo *model.TableInfo, columnID int64) *model.ColumnInfo {
+	for _, columnInfo := range tableInfo.Columns {
+		if columnInfo.ID == columnID {
+			return columnInfo
+		}
+	}
+	return nil
 }

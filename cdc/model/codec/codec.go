@@ -41,8 +41,7 @@ var (
 )
 
 func postUnmarshal(r *model.RedoLog) {
-	workaroundColumn := func(c *model.Column, redoC *model.RedoColumn) {
-		c.Flag = model.ColumnFlagType(redoC.Flag)
+	workaroundColumn := func(c *model.ColumnData, redoC *model.RedoColumn) {
 		if redoC.ValueIsEmptyBytes {
 			c.Value = []byte{}
 		} else {
@@ -92,7 +91,7 @@ func preMarshal(r *model.RedoLog) {
 			redoC := model.RedoColumn{}
 			if c != nil {
 				redoC.Value = c.Value
-				redoC.Flag = uint64(c.Flag)
+				redoC.Flag = uint64(*row.ForceGetColumnFlagType(c.ColumnID))
 				workaroundColumn(&redoC)
 			}
 			r.RedoRow.Columns = append(r.RedoRow.Columns, redoC)
@@ -101,7 +100,7 @@ func preMarshal(r *model.RedoLog) {
 			redoC := model.RedoColumn{}
 			if c != nil {
 				redoC.Value = c.Value
-				redoC.Flag = uint64(c.Flag)
+				redoC.Flag = uint64(*row.ForceGetColumnFlagType(c.ColumnID))
 				workaroundColumn(&redoC)
 			}
 			r.RedoRow.PreColumns = append(r.RedoRow.PreColumns, redoC)
@@ -192,20 +191,18 @@ func redoLogFromV1(rv1 *codecv1.RedoLog) (r *model.RedoLog) {
 			CommitTs:            rv1.RedoRow.Row.CommitTs,
 			RowID:               rv1.RedoRow.Row.RowID,
 			Table:               tableNameFromV1(rv1.RedoRow.Row.Table),
-			ColInfos:            rv1.RedoRow.Row.ColInfos,
 			TableInfo:           rv1.RedoRow.Row.TableInfo,
-			Columns:             make([]*model.Column, 0, len(rv1.RedoRow.Row.Columns)),
-			PreColumns:          make([]*model.Column, 0, len(rv1.RedoRow.Row.PreColumns)),
-			IndexColumns:        rv1.RedoRow.Row.IndexColumns,
+			Columns:             make([]*model.ColumnData, 0, len(rv1.RedoRow.Row.Columns)),
+			PreColumns:          make([]*model.ColumnData, 0, len(rv1.RedoRow.Row.PreColumns)),
 			ApproximateDataSize: rv1.RedoRow.Row.ApproximateDataSize,
 			SplitTxn:            rv1.RedoRow.Row.SplitTxn,
 			ReplicatingTs:       rv1.RedoRow.Row.ReplicatingTs,
 		}
 		for _, c := range rv1.RedoRow.Row.Columns {
-			r.RedoRow.Row.Columns = append(r.RedoRow.Row.Columns, columnFromV1(c))
+			r.RedoRow.Row.Columns = append(r.RedoRow.Row.Columns, columnFromV1(c, rv1.RedoRow.Row.TableInfo))
 		}
 		for _, c := range rv1.RedoRow.Row.PreColumns {
-			r.RedoRow.Row.PreColumns = append(r.RedoRow.Row.PreColumns, columnFromV1(c))
+			r.RedoRow.Row.PreColumns = append(r.RedoRow.Row.PreColumns, columnFromV1(c, rv1.RedoRow.Row.TableInfo))
 		}
 	}
 	if rv1.RedoDDL != nil && rv1.RedoDDL.DDL != nil {
@@ -231,14 +228,10 @@ func tableNameFromV1(t *codecv1.TableName) *model.TableName {
 	}
 }
 
-func columnFromV1(c *codecv1.Column) *model.Column {
-	return &model.Column{
-		Name:             c.Name,
-		Type:             c.Type,
-		Charset:          c.Charset,
-		Flag:             c.Flag,
+func columnFromV1(c *codecv1.Column, tableInfo *model.TableInfo) *model.ColumnData {
+	return &model.ColumnData{
+		ColumnID:         tableInfo.ForceGetColumnIDByName(c.Name),
 		Value:            c.Value,
-		Default:          c.Default,
 		ApproximateBytes: c.ApproximateBytes,
 	}
 }

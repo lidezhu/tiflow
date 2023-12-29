@@ -192,8 +192,8 @@ func canalJSONMessage2RowChange(msg canalJSONMessageInterface) (*model.RowChange
 	return result, nil
 }
 
-func canalJSONColumnMap2RowChangeColumns(cols map[string]interface{}, mysqlType map[string]string) ([]*model.Column, error) {
-	result := make([]*model.Column, 0, len(cols))
+func canalJSONColumnMap2RowChangeColumns(cols map[string]interface{}, mysqlType map[string]string) ([]*model.ColumnData, error) {
+	result := make([]*model.ColumnData, 0, len(cols))
 	for name, value := range cols {
 		mysqlTypeStr, ok := mysqlType[name]
 		if !ok {
@@ -208,17 +208,17 @@ func canalJSONColumnMap2RowChangeColumns(cols map[string]interface{}, mysqlType 
 		return nil, nil
 	}
 	sort.Slice(result, func(i, j int) bool {
-		return strings.Compare(result[i].Name, result[j].Name) > 0
+		return result[i].ColumnID > result[j].ColumnID
 	})
 	return result, nil
 }
 
-func canalJSONFormatColumn(value interface{}, name string, mysqlTypeStr string) *model.Column {
+func canalJSONFormatColumn(value interface{}, name string, mysqlTypeStr string) *model.ColumnData {
 	mysqlType := utils.ExtractBasicMySQLType(mysqlTypeStr)
-	result := &model.Column{
-		Type:  mysqlType,
-		Name:  name,
-		Value: value,
+	// FIXME: fix ColumnID
+	result := &model.ColumnData{
+		ColumnID: 0,
+		Value:    value,
 	}
 	if result.Value == nil {
 		return result

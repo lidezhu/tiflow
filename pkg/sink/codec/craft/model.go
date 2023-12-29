@@ -304,20 +304,19 @@ func (g *columnGroup) encode(bits []byte, dict *termDictionary) []byte {
 }
 
 // ToModel converts column group into model
-func (g *columnGroup) ToModel() ([]*model.Column, error) {
-	columns := make([]*model.Column, len(g.names))
-	for i, name := range g.names {
+func (g *columnGroup) ToModel() ([]*model.ColumnData, error) {
+	columns := make([]*model.ColumnData, len(g.names))
+	for i, _ := range g.names {
 		ty := byte(g.types[i])
 		flag := model.ColumnFlagType(g.flags[i])
 		value, err := DecodeTiDBType(ty, flag, g.values[i])
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
-		columns[i] = &model.Column{
-			Name:  name,
-			Type:  ty,
-			Flag:  flag,
-			Value: value,
+		columns[i] = &model.ColumnData{
+			// FIXME: specify right ColumnID
+			ColumnID: 0,
+			Value:    value,
 		}
 	}
 	return columns, nil
@@ -418,13 +417,13 @@ func newRowChangedMessage(allocator *SliceAllocator, ev *model.RowChangedEvent, 
 	groups := allocator.columnGroupSlice(numGroups)
 	estimatedSize := 0
 	idx := 0
-	if size, group := newColumnGroup(allocator, columnGroupTypeNew, ev.Columns, false); group != nil {
+	if size, group := newColumnGroup(allocator, columnGroupTypeNew, model.ColumnDatas2Columns(ev.Columns, ev.TableInfo), false); group != nil {
 		groups[idx] = group
 		idx++
 		estimatedSize += size
 	}
 	onlyHandleKeyColumns = onlyHandleKeyColumns && ev.IsDelete()
-	if size, group := newColumnGroup(allocator, columnGroupTypeOld, ev.PreColumns, onlyHandleKeyColumns); group != nil {
+	if size, group := newColumnGroup(allocator, columnGroupTypeOld, model.ColumnDatas2Columns(ev.PreColumns, ev.TableInfo), onlyHandleKeyColumns); group != nil {
 		groups[idx] = group
 		estimatedSize += size
 	}

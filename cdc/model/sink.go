@@ -315,8 +315,7 @@ type RowChangedEvent struct {
 
 	// Table contains the table name and table ID.
 	// NOTICE: We store the physical table ID here, not the logical table ID.
-	Table    *TableName         `json:"table" msg:"table"`
-	ColInfos []rowcodec.ColInfo `json:"column-infos" msg:"-"`
+	Table *TableName `json:"table" msg:"table"`
 	// NOTICE: We probably store the logical ID inside TableInfo's TableName,
 	// not the physical ID.
 	// For normal table, there is only one ID, which is the physical ID.
@@ -329,9 +328,8 @@ type RowChangedEvent struct {
 	// So be careful when using the TableInfo.
 	TableInfo *TableInfo `json:"-" msg:"-"`
 
-	Columns      []*Column `json:"columns" msg:"columns"`
-	PreColumns   []*Column `json:"pre-columns" msg:"pre-columns"`
-	IndexColumns [][]int   `json:"-" msg:"index-columns"`
+	Columns    []*ColumnData `json:"columns" msg:"columns"`
+	PreColumns []*ColumnData `json:"pre-columns" msg:"pre-columns"`
 
 	// Checksum for the event, only not nil if the upstream TiDB enable the row level checksum
 	// and TiCDC set the integrity check level to the correctness.
@@ -399,11 +397,39 @@ func (r *RowChangedEvent) IsUpdate() bool {
 	return len(r.PreColumns) != 0 && len(r.Columns) != 0
 }
 
+// Caller must ensure `columnID` exists
+func (r *RowChangedEvent) ForceGetColumnFlagType(columnID int64) *ColumnFlagType {
+	tableInfo := r.TableInfo
+	flag, ok := tableInfo.ColumnsFlag[columnID]
+	if !ok {
+		log.Panic("invalid column id", zap.Int64("columnID", columnID))
+	}
+	return &flag
+}
+
+func (r *RowChangedEvent) ForceGetColumnName(columnID int64) string {
+	tableInfo := r.TableInfo
+	offset, ok := tableInfo.columnsOffset[columnID]
+	if !ok {
+		log.Panic("invalid column id", zap.Int64("columnID", columnID))
+	}
+	return tableInfo.Columns[offset].Name.O
+}
+
+func (r *RowChangedEvent) ForceGetExtraColumnInfo(columnID int64) rowcodec.ColInfo {
+	tableInfo := r.TableInfo
+	colOffset, ok := tableInfo.columnsOffset[columnID]
+	if !ok {
+		log.Panic("invalid column id", zap.Int64("columnID", columnID))
+	}
+	return tableInfo.rowColInfos[colOffset]
+}
+
 // PrimaryKeyColumnNames return all primary key's name
 func (r *RowChangedEvent) PrimaryKeyColumnNames() []string {
 	var result []string
 
-	var cols []*Column
+	var cols []*ColumnData
 	if r.IsDelete() {
 		cols = r.PreColumns
 	} else {
@@ -412,8 +438,8 @@ func (r *RowChangedEvent) PrimaryKeyColumnNames() []string {
 
 	result = make([]string, 0)
 	for _, col := range cols {
-		if col != nil && col.Flag.IsPrimaryKey() {
-			result = append(result, col.Name)
+		if col != nil && r.ForceGetColumnFlagType(col.ColumnID).IsPrimaryKey() {
+			result = append(result, r.ForceGetColumnName(col.ColumnID))
 		}
 	}
 	return result
@@ -423,7 +449,7 @@ func (r *RowChangedEvent) PrimaryKeyColumnNames() []string {
 func (r *RowChangedEvent) GetHandleKeyColumnValues() []string {
 	var result []string
 
-	var cols []*Column
+	var cols []*ColumnData
 	if r.IsDelete() {
 		cols = r.PreColumns
 	} else {
@@ -432,7 +458,7 @@ func (r *RowChangedEvent) GetHandleKeyColumnValues() []string {
 
 	result = make([]string, 0)
 	for _, col := range cols {
-		if col != nil && col.Flag.IsHandleKey() {
+		if col != nil && r.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
 			result = append(result, ColumnValueString(col.Value))
 		}
 	}
@@ -440,21 +466,21 @@ func (r *RowChangedEvent) GetHandleKeyColumnValues() []string {
 }
 
 // HandleKeyColInfos returns the column(s) and colInfo(s) corresponding to the handle key(s)
-func (r *RowChangedEvent) HandleKeyColInfos() ([]*Column, []rowcodec.ColInfo) {
-	pkeyCols := make([]*Column, 0)
+func (r *RowChangedEvent) HandleKeyColInfos() ([]*ColumnData, []rowcodec.ColInfo) {
+	pkeyCols := make([]*ColumnData, 0)
 	pkeyColInfos := make([]rowcodec.ColInfo, 0)
 
-	var cols []*Column
+	var cols []*ColumnData
 	if r.IsDelete() {
 		cols = r.PreColumns
 	} else {
 		cols = r.Columns
 	}
 
-	for i, col := range cols {
-		if col != nil && col.Flag.IsHandleKey() {
+	for _, col := range cols {
+		if col != nil && r.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
 			pkeyCols = append(pkeyCols, col)
-			pkeyColInfos = append(pkeyColInfos, r.ColInfos[i])
+			pkeyColInfos = append(pkeyColInfos, r.ForceGetExtraColumnInfo(col.ColumnID))
 		}
 	}
 
@@ -463,17 +489,20 @@ func (r *RowChangedEvent) HandleKeyColInfos() ([]*Column, []rowcodec.ColInfo) {
 }
 
 // WithHandlePrimaryFlag set `HandleKeyFlag` and `PrimaryKeyFlag`
+// TODO: use column id as params instead
 func (r *RowChangedEvent) WithHandlePrimaryFlag(colNames map[string]struct{}) {
 	for _, col := range r.Columns {
-		if _, ok := colNames[col.Name]; ok {
-			col.Flag.SetIsHandleKey()
-			col.Flag.SetIsPrimaryKey()
+		colName := r.ForceGetColumnName(col.ColumnID)
+		if _, ok := colNames[colName]; ok {
+			r.ForceGetColumnFlagType(col.ColumnID).SetIsHandleKey()
+			r.ForceGetColumnFlagType(col.ColumnID).SetIsPrimaryKey()
 		}
 	}
 	for _, col := range r.PreColumns {
-		if _, ok := colNames[col.Name]; ok {
-			col.Flag.SetIsHandleKey()
-			col.Flag.SetIsPrimaryKey()
+		colName := r.ForceGetColumnName(col.ColumnID)
+		if _, ok := colNames[colName]; ok {
+			r.ForceGetColumnFlagType(col.ColumnID).SetIsHandleKey()
+			r.ForceGetColumnFlagType(col.ColumnID).SetIsPrimaryKey()
 		}
 	}
 }
@@ -482,7 +511,6 @@ func (r *RowChangedEvent) WithHandlePrimaryFlag(colNames map[string]struct{}) {
 func (r *RowChangedEvent) ApproximateBytes() int {
 	const sizeOfRowEvent = int(unsafe.Sizeof(*r))
 	const sizeOfTable = int(unsafe.Sizeof(*r.Table))
-	const sizeOfIndexes = int(unsafe.Sizeof(r.IndexColumns[0]))
 	const sizeOfInt = int(unsafe.Sizeof(int(0)))
 
 	// Size of table name
@@ -496,11 +524,6 @@ func (r *RowChangedEvent) ApproximateBytes() int {
 		if r.PreColumns[i] != nil {
 			size += r.PreColumns[i].ApproximateBytes
 		}
-	}
-	// Size of index columns
-	for i := range r.IndexColumns {
-		size += len(r.IndexColumns[i]) * sizeOfInt
-		size += sizeOfIndexes
 	}
 	// Size of an empty row event
 	size += sizeOfRowEvent
@@ -516,9 +539,43 @@ type Column struct {
 	Flag      ColumnFlagType `json:"flag" msg:"-"`
 	Value     interface{}    `json:"value" msg:"-"`
 	Default   interface{}    `json:"default" msg:"-"`
+}
+
+type ColumnData struct {
+	ColumnID int64       `json:"column_id" msg:"column_id"`
+	Value    interface{} `json:"value" msg:"-"`
 
 	// ApproximateBytes is approximate bytes consumed by the column.
 	ApproximateBytes int `json:"-" msg:"-"`
+}
+
+func ColumnData2Column(col *ColumnData, tableInfo *TableInfo) *Column {
+	colID := col.ColumnID
+	offset, ok := tableInfo.columnsOffset[colID]
+	if !ok {
+		log.Panic("invalid column id", zap.Int64("columnID", colID))
+	}
+	colInfo := tableInfo.Columns[offset]
+	return &Column{
+		Name:      colInfo.Name.O,
+		Type:      colInfo.GetType(),
+		Charset:   colInfo.GetCharset(),
+		Collation: colInfo.GetCollate(),
+		Flag:      tableInfo.ColumnsFlag[colID],
+		Value:     col.Value,
+		Default:   GetColumnDefaultValue(colInfo),
+	}
+}
+
+func ColumnDatas2Columns(cols []*ColumnData, tableInfo *TableInfo) []*Column {
+	columns := make([]*Column, len(cols))
+	for i, colData := range cols {
+		if colData == nil {
+			continue
+		}
+		columns[i] = ColumnData2Column(colData, tableInfo)
+	}
+	return columns
 }
 
 // RedoColumn stores Column change
@@ -860,8 +917,8 @@ func shouldSplitUpdateEvent(updateEvent *RowChangedEvent) bool {
 	for i := range updateEvent.Columns {
 		col := updateEvent.Columns[i]
 		preCol := updateEvent.PreColumns[i]
-		if col != nil && (col.Flag.IsUniqueKey() || col.Flag.IsHandleKey()) &&
-			preCol != nil && (preCol.Flag.IsUniqueKey() || preCol.Flag.IsHandleKey()) {
+		if col != nil && (updateEvent.ForceGetColumnFlagType(col.ColumnID).IsUniqueKey() || updateEvent.ForceGetColumnFlagType(col.ColumnID).IsHandleKey()) &&
+			preCol != nil && (updateEvent.ForceGetColumnFlagType(preCol.ColumnID).IsUniqueKey() || updateEvent.ForceGetColumnFlagType(preCol.ColumnID).IsHandleKey()) {
 			colValueString := ColumnValueString(col.Value)
 			preColValueString := ColumnValueString(preCol.Value)
 			// If one unique key columns is updated, we need to split the event row.

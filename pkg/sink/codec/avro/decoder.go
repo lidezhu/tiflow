@@ -142,18 +142,15 @@ func (d *decoder) NextRowChangedEvent() (*model.RowChangedEvent, error) {
 			zap.String("topic", d.topic), zap.Uint64("checksum", expectedChecksum))
 		for _, col := range event.Columns {
 			log.Info("data corrupted, print each column for debugging",
-				zap.String("name", col.Name),
-				zap.Any("type", col.Type),
-				zap.Any("charset", col.Charset),
-				zap.Any("flag", col.Flag),
-				zap.Any("value", col.Value),
-				zap.Any("default", col.Default))
+				zap.Int64("id", col.ColumnID),
+				zap.Any("value", col.Value))
 		}
-
 	}
 
+	columns := model.ColumnDatas2Columns(event.Columns, event.TableInfo)
+
 	if found {
-		if err := d.verifyChecksum(event.Columns, expectedChecksum); err != nil {
+		if err := d.verifyChecksum(columns, expectedChecksum); err != nil {
 			return nil, errors.Trace(err)
 		}
 	}
@@ -171,7 +168,7 @@ func assembleEvent(keyMap, valueMap, schema map[string]interface{}, isDelete boo
 		return nil, errors.New("schema fields should be a map")
 	}
 
-	columns := make([]*model.Column, 0, len(valueMap))
+	columns := make([]*model.ColumnData, 0, len(valueMap))
 	// fields is ordered by the column id, so iterate over it to build columns
 	// it's also the order to calculate the checksum.
 	for _, item := range fields {
@@ -221,11 +218,10 @@ func assembleEvent(keyMap, valueMap, schema map[string]interface{}, isDelete boo
 			return nil, errors.Trace(err)
 		}
 
-		col := &model.Column{
-			Name:  colName,
-			Type:  mysqlType,
-			Flag:  flag,
-			Value: value,
+		col := &model.ColumnData{
+			// FIXME: get right column id
+			ColumnID: 0,
+			Value:    value,
 		}
 		columns = append(columns, col)
 	}
@@ -244,6 +240,7 @@ func assembleEvent(keyMap, valueMap, schema map[string]interface{}, isDelete boo
 		commitTs = o.(int64)
 	}
 
+	// FIXME: fix table info
 	event := new(model.RowChangedEvent)
 	event.CommitTs = uint64(commitTs)
 	event.Table = &model.TableName{

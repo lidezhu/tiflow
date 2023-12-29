@@ -67,16 +67,15 @@ func (c *Column) FromRowChangeColumn(col *model.Column) {
 }
 
 // ToRowChangeColumn converts from a codec column to a row changed column.
-func (c *Column) ToRowChangeColumn(name string) *model.Column {
-	col := new(model.Column)
-	col.Type = c.Type
-	col.Flag = c.Flag
-	col.Name = name
+func (c *Column) ToRowChangeColumn(name string) *model.ColumnData {
+	col := new(model.ColumnData)
+	// FIXME: fix ColumnID
+	col.ColumnID = 0
 	col.Value = c.Value
 	if c.Value == nil {
 		return col
 	}
-	switch col.Type {
+	switch c.Type {
 	case mysql.TypeString, mysql.TypeVarString, mysql.TypeVarchar:
 		str := col.Value.(string)
 		var err error

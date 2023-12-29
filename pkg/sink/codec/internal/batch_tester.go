@@ -18,128 +18,142 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/pingcap/tidb/pkg/parser/mysql"
 	"github.com/pingcap/tiflow/cdc/model"
 	"github.com/pingcap/tiflow/pkg/sink/codec"
 	"github.com/stretchr/testify/require"
 )
 
 var (
+	// FIXME: specify right column id
 	// CodecRowCases defines test cases for RowChangedEvent.
 	CodecRowCases = [][]*model.RowChangedEvent{{{
 		CommitTs: 424316552636792833,
 		Table:    &model.TableName{Schema: "a", Table: "b"},
-		PreColumns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		PreColumns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar0")},
+
+			// {Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
-		Columns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		Columns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar0")},
+
+			// {Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
 	}}, {{
 		CommitTs: 424316553934667777,
 		Table:    &model.TableName{Schema: "a", Table: "c"},
-		PreColumns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		PreColumns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar0")},
+
+			// {Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
-		Columns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		Columns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar0")},
+
+			// {Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
 	}, {
 		CommitTs: 424316554327097345,
 		Table:    &model.TableName{Schema: "a", Table: "d"},
-		PreColumns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		PreColumns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar0")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
-		Columns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		Columns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar1")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
 	}, {
 		CommitTs: 424316554746789889,
 		Table:    &model.TableName{Schema: "a", Table: "e"},
-		PreColumns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		PreColumns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar0")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
-		Columns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		Columns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar0")},
+
+			// {Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
 	}, {
 		CommitTs: 424316555073945601,
 		Table:    &model.TableName{Schema: "a", Table: "f", TableID: 6, IsPartition: true},
-		PreColumns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		PreColumns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar0")},
+
+			// {Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
-		Columns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
+		Columns: []*model.ColumnData{
+			{ColumnID: 100, Value: []byte("varchar0")},
+
+			// {Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
+			// {Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
+			// {Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
+			// {Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
+			// {Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
+			// {Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
+			// {Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
+			// {Name: "null", Type: mysql.TypeNull, Value: nil},
 		},
 	}}, {}}
 
@@ -186,21 +200,22 @@ var (
 	CodecResolvedTSCases = [][]uint64{{424316592563683329}, {424316594097225729, 424316594214141953, 424316594345213953}, {}}
 )
 
-type columnsArray []*model.Column
+type columnsArray []*model.ColumnData
 
 func (a columnsArray) Len() int {
 	return len(a)
 }
 
 func (a columnsArray) Less(i, j int) bool {
-	return a[i].Name < a[j].Name
+	// return a[i].Name < a[j].Name
+	return a[i].ColumnID < a[j].ColumnID
 }
 
 func (a columnsArray) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
 }
 
-func sortColumnArrays(arrays ...[]*model.Column) {
+func sortColumnArrays(arrays ...[]*model.ColumnData) {
 	for _, array := range arrays {
 		if array != nil {
 			sort.Sort(columnsArray(array))

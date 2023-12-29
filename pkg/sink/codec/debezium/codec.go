@@ -23,7 +23,6 @@ import (
 	"github.com/pingcap/tidb/pkg/parser/mysql"
 	"github.com/pingcap/tidb/pkg/types"
 	"github.com/pingcap/tidb/pkg/util/hack"
-	"github.com/pingcap/tidb/pkg/util/rowcodec"
 	"github.com/pingcap/tiflow/cdc/model"
 	cerror "github.com/pingcap/tiflow/pkg/errors"
 	"github.com/pingcap/tiflow/pkg/sink/codec/common"
@@ -37,11 +36,11 @@ type dbzCodec struct {
 	nowFunc   func() time.Time
 }
 
-func (c *dbzCodec) writeColumnsAsField(writer *util.JSONWriter, fieldName string, cols []*model.Column, colInfos []rowcodec.ColInfo) error {
+func (c *dbzCodec) writeColumnsAsField(writer *util.JSONWriter, fieldName string, cols []*model.ColumnData, e *model.RowChangedEvent) error {
 	var err error
 	writer.WriteObjectField(fieldName, func() {
-		for i, col := range cols {
-			err = c.writeDebeziumField(writer, col, colInfos[i].Ft)
+		for _, col := range cols {
+			err = c.writeDebeziumField(writer, model.ColumnData2Column(col, e.TableInfo), e.ForceGetExtraColumnInfo(col.ColumnID).Ft)
 			if err != nil {
 				break
 			}
@@ -339,16 +338,16 @@ func (c *dbzCodec) EncodeRowChangedEvent(
 				// after: An optional field that specifies the state of the row after the event occurred.
 				// Optional field that specifies the state of the row after the event occurred.
 				// In a delete event value, the after field is null, signifying that the row no longer exists.
-				err = c.writeColumnsAsField(jWriter, "after", e.Columns, e.ColInfos)
+				err = c.writeColumnsAsField(jWriter, "after", e.Columns, e)
 			} else if e.IsDelete() {
 				jWriter.WriteStringField("op", "d")
 				jWriter.WriteNullField("after")
-				err = c.writeColumnsAsField(jWriter, "before", e.PreColumns, e.ColInfos)
+				err = c.writeColumnsAsField(jWriter, "before", e.PreColumns, e)
 			} else if e.IsUpdate() {
 				jWriter.WriteStringField("op", "u")
-				err = c.writeColumnsAsField(jWriter, "before", e.PreColumns, e.ColInfos)
+				err = c.writeColumnsAsField(jWriter, "before", e.PreColumns, e)
 				if err == nil {
-					err = c.writeColumnsAsField(jWriter, "after", e.Columns, e.ColInfos)
+					err = c.writeColumnsAsField(jWriter, "after", e.Columns, e)
 				}
 			}
 		})

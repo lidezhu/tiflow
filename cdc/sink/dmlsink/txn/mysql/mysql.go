@@ -341,12 +341,13 @@ func convert2RowChanges(
 	return res
 }
 
-func convertBinaryToString(cols []*model.Column) {
+func convertBinaryToString(cols []*model.ColumnData, tableInfo *timodel.TableInfo) {
 	for i, col := range cols {
 		if col == nil {
 			continue
 		}
-		if col.Charset != "" && col.Charset != charset.CharsetBin {
+		colInfo := model.GetColumnInfoByID(tableInfo, col.ColumnID)
+		if colInfo.GetCharset() != "" && colInfo.GetCharset() != charset.CharsetBin {
 			colValBytes, ok := col.Value.([]byte)
 			if ok {
 				cols[i].Value = string(colValBytes)
@@ -370,8 +371,8 @@ func (s *mysqlBackend) groupRowsByType(
 	deleteRow := make([]*sqlmodel.RowChange, 0, preAllocateSize)
 
 	for _, row := range event.Event.Rows {
-		convertBinaryToString(row.Columns)
-		convertBinaryToString(row.PreColumns)
+		convertBinaryToString(row.Columns, tableInfo)
+		convertBinaryToString(row.PreColumns, tableInfo)
 
 		if row.IsInsert() {
 			insertRow = append(
@@ -512,12 +513,12 @@ func (s *mysqlBackend) genUpdateSQL(rows ...*sqlmodel.RowChange) ([]string, [][]
 	return sqls, values
 }
 
-func hasHandleKey(cols []*model.Column) bool {
+func hasHandleKey(cols []*model.ColumnData, e *model.RowChangedEvent) bool {
 	for _, col := range cols {
 		if col == nil {
 			continue
 		}
-		if col.Flag.IsHandleKey() {
+		if e.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
 			return true
 		}
 	}
@@ -570,9 +571,11 @@ func (s *mysqlBackend) prepareDMLs() *preparedDMLs {
 				tableColumns = firstRow.PreColumns
 			}
 			// only use batch dml when the table has a handle key
-			if hasHandleKey(tableColumns) {
+			if hasHandleKey(tableColumns, firstRow) {
 				// TODO(dongmen): find a better way to get table info.
-				tableInfo := model.BuildTiDBTableInfo(tableColumns, firstRow.IndexColumns)
+				// FIXME: why it need to manually build table info here?
+				// tableInfo := model.BuildTiDBTableInfo(tableColumns, firstRow.IndexColumns)
+				tableInfo := firstRow.TableInfo.TableInfo
 				sql, value := s.batchSingleTxnDmls(event, tableInfo, translateToInsert)
 				sqls = append(sqls, sql...)
 				values = append(values, value...)
@@ -594,7 +597,7 @@ func (s *mysqlBackend) prepareDMLs() *preparedDMLs {
 			// If the old value is enabled, is not in safe mode and is an update event, then translate to UPDATE.
 			// NOTICE: Only update events with the old value feature enabled will have both columns and preColumns.
 			if translateToInsert && len(row.PreColumns) != 0 && len(row.Columns) != 0 {
-				query, args = prepareUpdate(quoteTable, row.PreColumns, row.Columns, s.cfg.ForceReplicate)
+				query, args = prepareUpdate(quoteTable, model.ColumnDatas2Columns(row.PreColumns, row.TableInfo), model.ColumnDatas2Columns(row.Columns, row.TableInfo), s.cfg.ForceReplicate)
 				if query != "" {
 					sqls = append(sqls, query)
 					values = append(values, args)
@@ -610,7 +613,7 @@ func (s *mysqlBackend) prepareDMLs() *preparedDMLs {
 			// For delete event:
 			// It will be translated directly into a DELETE SQL.
 			if len(row.PreColumns) != 0 {
-				query, args = prepareDelete(quoteTable, row.PreColumns, s.cfg.ForceReplicate)
+				query, args = prepareDelete(quoteTable, model.ColumnDatas2Columns(row.PreColumns, row.TableInfo), s.cfg.ForceReplicate)
 				if query != "" {
 					sqls = append(sqls, query)
 					values = append(values, args)
@@ -626,7 +629,7 @@ func (s *mysqlBackend) prepareDMLs() *preparedDMLs {
 			// INSERT(old value is enabled and not in safe mode)
 			// or REPLACE(old value is disabled or in safe mode) SQL.
 			if len(row.Columns) != 0 {
-				query, args = prepareReplace(quoteTable, row.Columns, true /* appendPlaceHolder */, translateToInsert)
+				query, args = prepareReplace(quoteTable, model.ColumnDatas2Columns(row.Columns, row.TableInfo), true /* appendPlaceHolder */, translateToInsert)
 				if query != "" {
 					sqls = append(sqls, query)
 					values = append(values, args)

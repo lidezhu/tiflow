@@ -59,8 +59,8 @@ func (r *IndexValueDispatcher) DispatchRowChangedEvent(row *model.RowChangedEven
 			if col == nil {
 				continue
 			}
-			if col.Flag.IsHandleKey() {
-				r.hasher.Write([]byte(col.Name), []byte(model.ColumnValueString(col.Value)))
+			if row.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
+				r.hasher.Write([]byte(row.ForceGetColumnName(col.ColumnID)), []byte(model.ColumnValueString(col.Value)))
 			}
 		}
 	} else {

@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"sort"
-	"strings"
 
 	timodel "github.com/pingcap/tidb/pkg/parser/model"
 	"github.com/pingcap/tiflow/cdc/model"
@@ -116,13 +115,13 @@ func rowChangeToMsg(
 	value := &messageRow{}
 	if e.IsDelete() {
 		onlyHandleKeyColumns := config.DeleteOnlyHandleKeyColumns || largeMessageOnlyHandleKeyColumns
-		value.Delete = rowChangeColumns2CodecColumns(e.PreColumns, onlyHandleKeyColumns)
+		value.Delete = rowChangeColumns2CodecColumns(model.ColumnDatas2Columns(e.PreColumns, e.TableInfo), onlyHandleKeyColumns)
 		if onlyHandleKeyColumns && len(value.Delete) == 0 {
 			return nil, nil, cerror.ErrOpenProtocolCodecInvalidData.GenWithStack("not found handle key columns for the delete event")
 		}
 	} else if e.IsUpdate() {
-		value.Update = rowChangeColumns2CodecColumns(e.Columns, largeMessageOnlyHandleKeyColumns)
-		value.PreColumns = rowChangeColumns2CodecColumns(e.PreColumns, largeMessageOnlyHandleKeyColumns)
+		value.Update = rowChangeColumns2CodecColumns(model.ColumnDatas2Columns(e.Columns, e.TableInfo), largeMessageOnlyHandleKeyColumns)
+		value.PreColumns = rowChangeColumns2CodecColumns(model.ColumnDatas2Columns(e.PreColumns, e.TableInfo), largeMessageOnlyHandleKeyColumns)
 		if largeMessageOnlyHandleKeyColumns && (len(value.Update) == 0 || len(value.PreColumns) == 0) {
 			return nil, nil, cerror.ErrOpenProtocolCodecInvalidData.GenWithStack("not found handle key columns for the update event")
 		}
@@ -130,7 +129,7 @@ func rowChangeToMsg(
 			value.dropNotUpdatedColumns()
 		}
 	} else {
-		value.Update = rowChangeColumns2CodecColumns(e.Columns, largeMessageOnlyHandleKeyColumns)
+		value.Update = rowChangeColumns2CodecColumns(model.ColumnDatas2Columns(e.Columns, e.TableInfo), largeMessageOnlyHandleKeyColumns)
 		if largeMessageOnlyHandleKeyColumns && len(value.Update) == 0 {
 			return nil, nil, cerror.ErrOpenProtocolCodecInvalidData.GenWithStack("not found handle key columns for the insert event")
 		}
@@ -182,8 +181,8 @@ func rowChangeColumns2CodecColumns(cols []*model.Column, onlyHandleKeyColumns bo
 	return jsonCols
 }
 
-func codecColumns2RowChangeColumns(cols map[string]internal.Column) []*model.Column {
-	sinkCols := make([]*model.Column, 0, len(cols))
+func codecColumns2RowChangeColumns(cols map[string]internal.Column) []*model.ColumnData {
+	sinkCols := make([]*model.ColumnData, 0, len(cols))
 	for name, col := range cols {
 		c := col.ToRowChangeColumn(name)
 		sinkCols = append(sinkCols, c)
@@ -192,7 +191,7 @@ func codecColumns2RowChangeColumns(cols map[string]internal.Column) []*model.Col
 		return nil
 	}
 	sort.Slice(sinkCols, func(i, j int) bool {
-		return strings.Compare(sinkCols[i].Name, sinkCols[j].Name) > 0
+		return sinkCols[i].ColumnID > sinkCols[j].ColumnID
 	})
 	return sinkCols
 }

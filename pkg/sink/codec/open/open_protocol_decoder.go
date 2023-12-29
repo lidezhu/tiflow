@@ -220,12 +220,11 @@ func (b *BatchDecoder) NextRowChangedEvent() (*model.RowChangedEvent, error) {
 
 func (b *BatchDecoder) buildColumns(
 	holder *common.ColumnsHolder, handleKeyColumns map[string]interface{},
-) []*model.Column {
+) []*model.ColumnData {
 	columnsCount := holder.Length()
-	columns := make([]*model.Column, 0, columnsCount)
+	columns := make([]*model.ColumnData, 0, columnsCount)
 	for i := 0; i < columnsCount; i++ {
 		columnType := holder.Types[i]
-		name := columnType.Name()
 		mysqlType := types.StrToType(strings.ToLower(columnType.DatabaseTypeName()))
 
 		var value interface{}
@@ -236,15 +235,12 @@ func (b *BatchDecoder) buildColumns(
 			value = string(value.([]uint8))
 		}
 
-		column := &model.Column{
-			Name:  name,
-			Type:  mysqlType,
-			Value: value,
+		// FIXME: fix ColumnID
+		column := &model.ColumnData{
+			ColumnID: 0,
+			Value:    value,
 		}
 
-		if _, ok := handleKeyColumns[name]; ok {
-			column.Flag = model.PrimaryKeyFlag | model.HandleKeyFlag
-		}
 		columns = append(columns, column)
 	}
 	return columns
@@ -258,11 +254,15 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 		table    = handleKeyOnlyEvent.Table.Table
 		commitTs = handleKeyOnlyEvent.CommitTs
 	)
+	// colFlag := e.ForceGetColumnFlagType(v.ColumnID)
+	// 		colInfo := e.TableInfo.GetColumnInfoByID(v.ColumnID)
+	// 		colName := e.ForceGetColumnName(v.ColumnID)
 
 	if handleKeyOnlyEvent.IsInsert() {
 		conditions := make(map[string]interface{}, len(handleKeyOnlyEvent.Columns))
 		for _, col := range handleKeyOnlyEvent.Columns {
-			conditions[col.Name] = col.Value
+			colName := handleKeyOnlyEvent.ForceGetColumnName(col.ColumnID)
+			conditions[colName] = col.Value
 		}
 		holder, err := common.SnapshotQuery(ctx, b.upstreamTiDB, commitTs, schema, table, conditions)
 		if err != nil {
@@ -273,7 +273,8 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 	} else if handleKeyOnlyEvent.IsDelete() {
 		conditions := make(map[string]interface{}, len(handleKeyOnlyEvent.PreColumns))
 		for _, col := range handleKeyOnlyEvent.PreColumns {
-			conditions[col.Name] = col.Value
+			colName := handleKeyOnlyEvent.ForceGetColumnName(col.ColumnID)
+			conditions[colName] = col.Value
 		}
 		holder, err := common.SnapshotQuery(ctx, b.upstreamTiDB, commitTs-1, schema, table, conditions)
 		if err != nil {
@@ -284,7 +285,8 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 	} else if handleKeyOnlyEvent.IsUpdate() {
 		conditions := make(map[string]interface{}, len(handleKeyOnlyEvent.Columns))
 		for _, col := range handleKeyOnlyEvent.Columns {
-			conditions[col.Name] = col.Value
+			colName := handleKeyOnlyEvent.ForceGetColumnName(col.ColumnID)
+			conditions[colName] = col.Value
 		}
 		holder, err := common.SnapshotQuery(ctx, b.upstreamTiDB, commitTs, schema, table, conditions)
 		if err != nil {
@@ -295,7 +297,8 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 
 		conditions = make(map[string]interface{}, len(handleKeyOnlyEvent.PreColumns))
 		for _, col := range handleKeyOnlyEvent.PreColumns {
-			conditions[col.Name] = col.Value
+			colName := handleKeyOnlyEvent.ForceGetColumnName(col.ColumnID)
+			conditions[colName] = col.Value
 		}
 		holder, err = common.SnapshotQuery(ctx, b.upstreamTiDB, commitTs-1, schema, table, conditions)
 		if err != nil {
