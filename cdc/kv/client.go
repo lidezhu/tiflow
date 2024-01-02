@@ -836,6 +836,11 @@ func (s *eventFeedSession) divideAndSendEventFeedToRegions(
 			regions, err = s.client.regionCache.BatchLoadRegionsWithKeyRange(
 				bo, nextSpan.Start, nextSpan.End, limit)
 			scanRegionsDuration.Observe(time.Since(start).Seconds())
+			log.Info("load regions",
+				zap.String("namespace", s.changefeed.Namespace),
+				zap.String("changefeed", s.changefeed.ID),
+				zap.Any("span", nextSpan))
+			err = errors.New("PD returned no region")
 			return cerror.WrapError(cerror.ErrPDBatchLoadRegions, err)
 			// if err != nil {
 			// 	return cerror.WrapError(cerror.ErrPDBatchLoadRegions, err)
