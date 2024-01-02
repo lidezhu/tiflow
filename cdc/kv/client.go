@@ -28,7 +28,6 @@ import (
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/kvproto/pkg/cdcpb"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/log"
 	"github.com/pingcap/tiflow/cdc/model"
 	"github.com/pingcap/tiflow/pkg/chann"
@@ -837,20 +836,21 @@ func (s *eventFeedSession) divideAndSendEventFeedToRegions(
 			regions, err = s.client.regionCache.BatchLoadRegionsWithKeyRange(
 				bo, nextSpan.Start, nextSpan.End, limit)
 			scanRegionsDuration.Observe(time.Since(start).Seconds())
-			if err != nil {
-				return cerror.WrapError(cerror.ErrPDBatchLoadRegions, err)
-			}
-			metas := make([]*metapb.Region, 0, len(regions))
-			for _, region := range regions {
-				if region.GetMeta() == nil {
-					return cerror.ErrMetaNotInRegion.FastGenByArgs()
-				}
-				metas = append(metas, region.GetMeta())
-			}
-			if !regionspan.CheckRegionsLeftCover(metas, nextSpan) {
-				return cerror.ErrRegionsNotCoverSpan.FastGenByArgs(nextSpan, metas)
-			}
-			return nil
+			return cerror.WrapError(cerror.ErrPDBatchLoadRegions, err)
+			// if err != nil {
+			// 	return cerror.WrapError(cerror.ErrPDBatchLoadRegions, err)
+			// }
+			// metas := make([]*metapb.Region, 0, len(regions))
+			// for _, region := range regions {
+			// 	if region.GetMeta() == nil {
+			// 		return cerror.ErrMetaNotInRegion.FastGenByArgs()
+			// 	}
+			// 	metas = append(metas, region.GetMeta())
+			// }
+			// if !regionspan.CheckRegionsLeftCover(metas, nextSpan) {
+			// 	return cerror.ErrRegionsNotCoverSpan.FastGenByArgs(nextSpan, metas)
+			// }
+			// return nil
 		}, retry.WithBackoffMaxDelay(500),
 			retry.WithTotalRetryDuratoin(time.Duration(s.client.config.KVClient.RegionRetryDuration)))
 		if retryErr != nil {
