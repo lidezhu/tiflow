@@ -111,7 +111,7 @@ func OpenPebble(
 func buildPebbleOption(cfg *config.DBConfig) (opts *pebble.Options) {
 	opts = new(pebble.Options)
 	opts.ErrorIfExists = true
-	opts.DisableWAL = false // Delete range requires WAL.
+	opts.DisableWAL = true // Delete range requires WAL.
 	opts.MaxOpenFiles = cfg.MaxOpenFiles / cfg.Count
 	opts.MaxConcurrentCompactions = 6
 	opts.L0CompactionThreshold = cfg.CompactionL0Trigger
