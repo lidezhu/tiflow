@@ -52,11 +52,12 @@ type TableInfo struct {
 	Version uint64
 	// ColumnID -> offset in model.TableInfo.Columns
 	columnsOffset map[int64]int
+	// ColumnID -> offset in model.TableInfo.Indices
 	indicesOffset map[int64]int
 
 	hasUniqueColumn bool
 
-	// It's a mapping from ColumnID to the offset of the columns in row changed events.
+	// ColumnID -> offset in RowChangedEvents.Columns.
 	RowColumnsOffset map[int64]int
 
 	ColumnsFlag map[int64]ColumnFlagType
@@ -136,7 +137,6 @@ func WrapTableInfo(schemaID int64, schemaName string, version uint64, info *mode
 					ti.handleColID = append(ti.handleColID, id)
 				}
 			}
-
 		}
 		ti.rowColInfos[i] = rowcodec.ColInfo{
 			ID:            col.ID,
@@ -267,6 +267,52 @@ func (ti *TableInfo) GetColumnInfo(colID int64) (info *model.ColumnInfo, exist b
 	return ti.Columns[colOffset], true
 }
 
+// ForceGetColumnInfo return the column info by ID
+// Caller must ensure `colID` exists
+func (ti *TableInfo) ForceGetColumnInfo(colID int64) *model.ColumnInfo {
+	colInfo, ok := ti.GetColumnInfo(colID)
+	if !ok {
+		log.Panic("invalid column id", zap.Int64("columnID", colID))
+	}
+	return colInfo
+}
+
+// ForceGetColumnFlagType return the column flag type by ID
+// Caller must ensure `colID` exists
+func (ti *TableInfo) ForceGetColumnFlagType(colID int64) *ColumnFlagType {
+	flag, ok := ti.ColumnsFlag[colID]
+	if !ok {
+		log.Panic("invalid column id", zap.Int64("columnID", colID))
+	}
+	return &flag
+}
+
+// ForceGetColumnName return the column name by ID
+// Caller must ensure `colID` exists
+func (ti *TableInfo) ForceGetColumnName(colID int64) string {
+	return ti.ForceGetColumnInfo(colID).Name.O
+}
+
+// ForceGetExtraColumnInfo return the extra column info by ID
+// Caller must ensure `colID` exists
+func (ti *TableInfo) ForceGetExtraColumnInfo(colID int64) rowcodec.ColInfo {
+	colOffset, ok := ti.columnsOffset[colID]
+	if !ok {
+		log.Panic("invalid column id", zap.Int64("columnID", colID))
+	}
+	return ti.rowColInfos[colOffset]
+}
+
+func (ti *TableInfo) ForceGetColumnIDByName(name string) int64 {
+	for _, columnInfo := range ti.Columns {
+		if columnInfo.Name.O == name {
+			return columnInfo.ID
+		}
+	}
+	log.Panic("invalid column name", zap.String("columnName", name))
+	return 0
+}
+
 func (ti *TableInfo) String() string {
 	return fmt.Sprintf("TableInfo, ID: %d, Name:%s, ColNum: %d, IdxNum: %d, PKIsHandle: %t", ti.ID, ti.TableName, len(ti.Columns), len(ti.Indices), ti.PKIsHandle)
 }
@@ -342,25 +388,6 @@ func (ti *TableInfo) GetIndex(name string) *model.IndexInfo {
 	return nil
 }
 
-func (ti *TableInfo) ForceGetColumnIDByName(name string) int64 {
-	for _, columnInfo := range ti.Columns {
-		if columnInfo.Name.O == name {
-			return columnInfo.ID
-		}
-	}
-	log.Panic("invalid column name", zap.String("columnName", name))
-	return 0
-}
-
-func (ti *TableInfo) GetColumnInfoByID(columnID int64) *model.ColumnInfo {
-	for _, columnInfo := range ti.Columns {
-		if columnInfo.ID == columnID {
-			return columnInfo
-		}
-	}
-	return nil
-}
-
 // IndexByName returns the index columns and offsets of the corresponding index by name
 func (ti *TableInfo) IndexByName(name string) ([]string, []int, bool) {
 	index := ti.GetIndex(name)
@@ -430,13 +457,4 @@ func GetColumnDefaultValue(col *model.ColumnInfo) interface{} {
 	}
 	defaultDatum := datumTypes.NewDatum(defaultValue)
 	return defaultDatum.GetValue()
-}
-
-func GetColumnInfoByID(tableInfo *model.TableInfo, columnID int64) *model.ColumnInfo {
-	for _, columnInfo := range tableInfo.Columns {
-		if columnInfo.ID == columnID {
-			return columnInfo
-		}
-	}
-	return nil
 }

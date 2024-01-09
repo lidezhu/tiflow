@@ -91,7 +91,7 @@ func preMarshal(r *model.RedoLog) {
 			redoC := model.RedoColumn{}
 			if c != nil {
 				redoC.Value = c.Value
-				redoC.Flag = uint64(*row.ForceGetColumnFlagType(c.ColumnID))
+				redoC.Flag = uint64(*row.TableInfo.ForceGetColumnFlagType(c.ColumnID))
 				workaroundColumn(&redoC)
 			}
 			r.RedoRow.Columns = append(r.RedoRow.Columns, redoC)
@@ -100,7 +100,7 @@ func preMarshal(r *model.RedoLog) {
 			redoC := model.RedoColumn{}
 			if c != nil {
 				redoC.Value = c.Value
-				redoC.Flag = uint64(*row.ForceGetColumnFlagType(c.ColumnID))
+				redoC.Flag = uint64(*row.TableInfo.ForceGetColumnFlagType(c.ColumnID))
 				workaroundColumn(&redoC)
 			}
 			r.RedoRow.PreColumns = append(r.RedoRow.PreColumns, redoC)

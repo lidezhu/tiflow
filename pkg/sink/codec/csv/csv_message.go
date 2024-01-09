@@ -432,7 +432,7 @@ func rowChangeColumns2CSVColumns(csvConfig *common.Config, cols []*model.ColumnD
 			continue
 		}
 
-		converted, err := fromColValToCsvVal(csvConfig, model.ColumnData2Column(column, e.TableInfo), e.ForceGetExtraColumnInfo(column.ColumnID).Ft)
+		converted, err := fromColValToCsvVal(csvConfig, model.ColumnData2Column(column, e.TableInfo), e.TableInfo.ForceGetExtraColumnInfo(column.ColumnID).Ft)
 		if err != nil {
 			return nil, errors.Trace(err)
 		}

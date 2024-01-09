@@ -474,19 +474,20 @@ func formatColumns(
 	columns []*model.ColumnData, event *model.RowChangedEvent, onlyHandleKey bool,
 ) (map[string]interface{}, error) {
 	result := make(map[string]interface{}, len(columns))
+	tableInfo := event.TableInfo
 	for _, col := range columns {
 		if col == nil {
 			continue
 		}
-		flag := event.ForceGetColumnFlagType(col.ColumnID)
+		flag := tableInfo.ForceGetColumnFlagType(col.ColumnID)
 		if onlyHandleKey && !flag.IsHandleKey() {
 			continue
 		}
-		value, err := encodeValue(col.Value, event.ForceGetExtraColumnInfo(col.ColumnID).Ft)
+		value, err := encodeValue(col.Value, tableInfo.ForceGetExtraColumnInfo(col.ColumnID).Ft)
 		if err != nil {
 			return nil, err
 		}
-		result[event.ForceGetColumnName(col.ColumnID)] = value
+		result[tableInfo.ForceGetColumnName(col.ColumnID)] = value
 	}
 	return result, nil
 }

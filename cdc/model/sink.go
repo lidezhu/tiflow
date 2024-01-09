@@ -397,34 +397,6 @@ func (r *RowChangedEvent) IsUpdate() bool {
 	return len(r.PreColumns) != 0 && len(r.Columns) != 0
 }
 
-// Caller must ensure `columnID` exists
-func (r *RowChangedEvent) ForceGetColumnFlagType(columnID int64) *ColumnFlagType {
-	tableInfo := r.TableInfo
-	flag, ok := tableInfo.ColumnsFlag[columnID]
-	if !ok {
-		log.Panic("invalid column id", zap.Int64("columnID", columnID))
-	}
-	return &flag
-}
-
-func (r *RowChangedEvent) ForceGetColumnName(columnID int64) string {
-	tableInfo := r.TableInfo
-	offset, ok := tableInfo.columnsOffset[columnID]
-	if !ok {
-		log.Panic("invalid column id", zap.Int64("columnID", columnID))
-	}
-	return tableInfo.Columns[offset].Name.O
-}
-
-func (r *RowChangedEvent) ForceGetExtraColumnInfo(columnID int64) rowcodec.ColInfo {
-	tableInfo := r.TableInfo
-	colOffset, ok := tableInfo.columnsOffset[columnID]
-	if !ok {
-		log.Panic("invalid column id", zap.Int64("columnID", columnID))
-	}
-	return tableInfo.rowColInfos[colOffset]
-}
-
 // PrimaryKeyColumnNames return all primary key's name
 func (r *RowChangedEvent) PrimaryKeyColumnNames() []string {
 	var result []string
@@ -437,9 +409,10 @@ func (r *RowChangedEvent) PrimaryKeyColumnNames() []string {
 	}
 
 	result = make([]string, 0)
+	tableInfo := r.TableInfo
 	for _, col := range cols {
-		if col != nil && r.ForceGetColumnFlagType(col.ColumnID).IsPrimaryKey() {
-			result = append(result, r.ForceGetColumnName(col.ColumnID))
+		if col != nil && tableInfo.ForceGetColumnFlagType(col.ColumnID).IsPrimaryKey() {
+			result = append(result, tableInfo.ForceGetColumnName(col.ColumnID))
 		}
 	}
 	return result
@@ -457,8 +430,9 @@ func (r *RowChangedEvent) GetHandleKeyColumnValues() []string {
 	}
 
 	result = make([]string, 0)
+	tableInfo := r.TableInfo
 	for _, col := range cols {
-		if col != nil && r.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
+		if col != nil && tableInfo.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
 			result = append(result, ColumnValueString(col.Value))
 		}
 	}
@@ -477,10 +451,11 @@ func (r *RowChangedEvent) HandleKeyColInfos() ([]*ColumnData, []rowcodec.ColInfo
 		cols = r.Columns
 	}
 
+	tableInfo := r.TableInfo
 	for _, col := range cols {
-		if col != nil && r.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
+		if col != nil && tableInfo.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
 			pkeyCols = append(pkeyCols, col)
-			pkeyColInfos = append(pkeyColInfos, r.ForceGetExtraColumnInfo(col.ColumnID))
+			pkeyColInfos = append(pkeyColInfos, tableInfo.ForceGetExtraColumnInfo(col.ColumnID))
 		}
 	}
 
@@ -491,18 +466,19 @@ func (r *RowChangedEvent) HandleKeyColInfos() ([]*ColumnData, []rowcodec.ColInfo
 // WithHandlePrimaryFlag set `HandleKeyFlag` and `PrimaryKeyFlag`
 // TODO: use column id as params instead
 func (r *RowChangedEvent) WithHandlePrimaryFlag(colNames map[string]struct{}) {
+	tableInfo := r.TableInfo
 	for _, col := range r.Columns {
-		colName := r.ForceGetColumnName(col.ColumnID)
+		colName := tableInfo.ForceGetColumnName(col.ColumnID)
 		if _, ok := colNames[colName]; ok {
-			r.ForceGetColumnFlagType(col.ColumnID).SetIsHandleKey()
-			r.ForceGetColumnFlagType(col.ColumnID).SetIsPrimaryKey()
+			tableInfo.ForceGetColumnFlagType(col.ColumnID).SetIsHandleKey()
+			tableInfo.ForceGetColumnFlagType(col.ColumnID).SetIsPrimaryKey()
 		}
 	}
 	for _, col := range r.PreColumns {
-		colName := r.ForceGetColumnName(col.ColumnID)
+		colName := tableInfo.ForceGetColumnName(col.ColumnID)
 		if _, ok := colNames[colName]; ok {
-			r.ForceGetColumnFlagType(col.ColumnID).SetIsHandleKey()
-			r.ForceGetColumnFlagType(col.ColumnID).SetIsPrimaryKey()
+			tableInfo.ForceGetColumnFlagType(col.ColumnID).SetIsHandleKey()
+			tableInfo.ForceGetColumnFlagType(col.ColumnID).SetIsPrimaryKey()
 		}
 	}
 }
@@ -511,7 +487,6 @@ func (r *RowChangedEvent) WithHandlePrimaryFlag(colNames map[string]struct{}) {
 func (r *RowChangedEvent) ApproximateBytes() int {
 	const sizeOfRowEvent = int(unsafe.Sizeof(*r))
 	const sizeOfTable = int(unsafe.Sizeof(*r.Table))
-	const sizeOfInt = int(unsafe.Sizeof(int(0)))
 
 	// Size of table name
 	size := len(r.Table.Schema) + len(r.Table.Table) + sizeOfTable
@@ -529,6 +504,41 @@ func (r *RowChangedEvent) ApproximateBytes() int {
 	size += sizeOfRowEvent
 	return size
 }
+
+// func BuildRowChangedEvent4Test(
+// 	commitTS uint64,
+// 	tableName *TableName,
+// 	colInfos []rowcodec.ColInfo,
+// ) *RowChangedEvent {
+// 	return &RowChangedEvent{
+// 		StartTs:   0, // not used in test
+// 		CommitTs:  commitTS,
+// 		RowID:     0, // not used in test
+// 		Table:     tableName,
+// 		ColInfos:  colInfos,
+// 		TableInfo: nil, // FIXME
+// 		PreColumns: []*Column{
+// 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
+// 			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
+// 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
+// 			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
+// 			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
+// 			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
+// 			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
+// 			{Name: "null", Type: mysql.TypeNull, Value: nil},
+// 		},
+// 		Columns: []*Column{
+// 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
+// 			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
+// 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
+// 			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
+// 			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
+// 			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
+// 			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
+// 			{Name: "null", Type: mysql.TypeNull, Value: nil},
+// 		},
+// 	}
+// }
 
 // Column represents a column value in row changed event
 type Column struct {
@@ -914,11 +924,12 @@ func shouldSplitUpdateEvent(updateEvent *RowChangedEvent) bool {
 		return false
 	}
 
+	tableInfo := updateEvent.TableInfo
 	for i := range updateEvent.Columns {
 		col := updateEvent.Columns[i]
 		preCol := updateEvent.PreColumns[i]
-		if col != nil && (updateEvent.ForceGetColumnFlagType(col.ColumnID).IsUniqueKey() || updateEvent.ForceGetColumnFlagType(col.ColumnID).IsHandleKey()) &&
-			preCol != nil && (updateEvent.ForceGetColumnFlagType(preCol.ColumnID).IsUniqueKey() || updateEvent.ForceGetColumnFlagType(preCol.ColumnID).IsHandleKey()) {
+		if col != nil && (tableInfo.ForceGetColumnFlagType(col.ColumnID).IsUniqueKey() || tableInfo.ForceGetColumnFlagType(col.ColumnID).IsHandleKey()) &&
+			preCol != nil && (tableInfo.ForceGetColumnFlagType(preCol.ColumnID).IsUniqueKey() || tableInfo.ForceGetColumnFlagType(preCol.ColumnID).IsHandleKey()) {
 			colValueString := ColumnValueString(col.Value)
 			preColValueString := ColumnValueString(preCol.Value)
 			// If one unique key columns is updated, we need to split the event row.

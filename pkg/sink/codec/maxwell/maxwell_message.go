@@ -64,15 +64,16 @@ func rowChangeToMaxwellMsg(e *model.RowChangedEvent, onlyHandleKeyColumns bool) 
 	}
 	physicalTime := oracle.GetTimeFromTS(e.CommitTs)
 	value.Ts = physicalTime.Unix()
+	tableInfo := e.TableInfo
 	if e.IsDelete() {
 		value.Type = "delete"
 		for _, v := range e.PreColumns {
-			colFlag := e.ForceGetColumnFlagType(v.ColumnID)
+			colFlag := tableInfo.ForceGetColumnFlagType(v.ColumnID)
 			if onlyHandleKeyColumns && !colFlag.IsHandleKey() {
 				continue
 			}
-			colInfo := e.TableInfo.GetColumnInfoByID(v.ColumnID)
-			colName := e.ForceGetColumnName(v.ColumnID)
+			colInfo := tableInfo.ForceGetColumnInfo(v.ColumnID)
+			colName := tableInfo.ForceGetColumnName(v.ColumnID)
 			switch colInfo.GetType() {
 			case mysql.TypeString, mysql.TypeVarString, mysql.TypeVarchar, mysql.TypeTinyBlob, mysql.TypeMediumBlob, mysql.TypeLongBlob, mysql.TypeBlob:
 				if v.Value == nil {
@@ -88,9 +89,9 @@ func rowChangeToMaxwellMsg(e *model.RowChangedEvent, onlyHandleKeyColumns bool) 
 		}
 	} else {
 		for _, v := range e.Columns {
-			colFlag := e.ForceGetColumnFlagType(v.ColumnID)
-			colInfo := e.TableInfo.GetColumnInfoByID(v.ColumnID)
-			colName := e.ForceGetColumnName(v.ColumnID)
+			colFlag := tableInfo.ForceGetColumnFlagType(v.ColumnID)
+			colInfo := tableInfo.ForceGetColumnInfo(v.ColumnID)
+			colName := tableInfo.ForceGetColumnName(v.ColumnID)
 			switch colInfo.GetType() {
 			case mysql.TypeString, mysql.TypeVarString, mysql.TypeVarchar, mysql.TypeTinyBlob, mysql.TypeMediumBlob, mysql.TypeLongBlob, mysql.TypeBlob:
 				if v.Value == nil {
@@ -109,9 +110,9 @@ func rowChangeToMaxwellMsg(e *model.RowChangedEvent, onlyHandleKeyColumns bool) 
 		} else {
 			value.Type = "update"
 			for _, v := range e.PreColumns {
-				colFlag := e.ForceGetColumnFlagType(v.ColumnID)
-				colInfo := e.TableInfo.GetColumnInfoByID(v.ColumnID)
-				colName := e.ForceGetColumnName(v.ColumnID)
+				colFlag := tableInfo.ForceGetColumnFlagType(v.ColumnID)
+				colInfo := tableInfo.ForceGetColumnInfo(v.ColumnID)
+				colName := tableInfo.ForceGetColumnName(v.ColumnID)
 				switch colInfo.GetType() {
 				case mysql.TypeString, mysql.TypeVarString, mysql.TypeVarchar, mysql.TypeTinyBlob, mysql.TypeMediumBlob, mysql.TypeLongBlob, mysql.TypeBlob:
 					if v.Value == nil {

@@ -254,14 +254,12 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 		table    = handleKeyOnlyEvent.Table.Table
 		commitTs = handleKeyOnlyEvent.CommitTs
 	)
-	// colFlag := e.ForceGetColumnFlagType(v.ColumnID)
-	// 		colInfo := e.TableInfo.GetColumnInfoByID(v.ColumnID)
-	// 		colName := e.ForceGetColumnName(v.ColumnID)
 
+	tableInfo := handleKeyOnlyEvent.TableInfo
 	if handleKeyOnlyEvent.IsInsert() {
 		conditions := make(map[string]interface{}, len(handleKeyOnlyEvent.Columns))
 		for _, col := range handleKeyOnlyEvent.Columns {
-			colName := handleKeyOnlyEvent.ForceGetColumnName(col.ColumnID)
+			colName := tableInfo.ForceGetColumnName(col.ColumnID)
 			conditions[colName] = col.Value
 		}
 		holder, err := common.SnapshotQuery(ctx, b.upstreamTiDB, commitTs, schema, table, conditions)
@@ -273,7 +271,7 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 	} else if handleKeyOnlyEvent.IsDelete() {
 		conditions := make(map[string]interface{}, len(handleKeyOnlyEvent.PreColumns))
 		for _, col := range handleKeyOnlyEvent.PreColumns {
-			colName := handleKeyOnlyEvent.ForceGetColumnName(col.ColumnID)
+			colName := tableInfo.ForceGetColumnName(col.ColumnID)
 			conditions[colName] = col.Value
 		}
 		holder, err := common.SnapshotQuery(ctx, b.upstreamTiDB, commitTs-1, schema, table, conditions)
@@ -285,7 +283,7 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 	} else if handleKeyOnlyEvent.IsUpdate() {
 		conditions := make(map[string]interface{}, len(handleKeyOnlyEvent.Columns))
 		for _, col := range handleKeyOnlyEvent.Columns {
-			colName := handleKeyOnlyEvent.ForceGetColumnName(col.ColumnID)
+			colName := tableInfo.ForceGetColumnName(col.ColumnID)
 			conditions[colName] = col.Value
 		}
 		holder, err := common.SnapshotQuery(ctx, b.upstreamTiDB, commitTs, schema, table, conditions)
@@ -297,7 +295,7 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 
 		conditions = make(map[string]interface{}, len(handleKeyOnlyEvent.PreColumns))
 		for _, col := range handleKeyOnlyEvent.PreColumns {
-			colName := handleKeyOnlyEvent.ForceGetColumnName(col.ColumnID)
+			colName := tableInfo.ForceGetColumnName(col.ColumnID)
 			conditions[colName] = col.Value
 		}
 		holder, err = common.SnapshotQuery(ctx, b.upstreamTiDB, commitTs-1, schema, table, conditions)

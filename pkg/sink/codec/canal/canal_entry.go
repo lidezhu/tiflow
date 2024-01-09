@@ -166,7 +166,7 @@ func (b *canalEntryBuilder) buildRowData(e *model.RowChangedEvent, onlyHandleKey
 		if column == nil {
 			continue
 		}
-		if onlyHandleKeyColumns && !e.ForceGetColumnFlagType(column.ColumnID).IsHandleKey() {
+		if onlyHandleKeyColumns && !e.TableInfo.ForceGetColumnFlagType(column.ColumnID).IsHandleKey() {
 			continue
 		}
 		columnInfo, ok := e.TableInfo.GetColumnInfo(column.ColumnID)

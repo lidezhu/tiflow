@@ -40,7 +40,7 @@ func (c *dbzCodec) writeColumnsAsField(writer *util.JSONWriter, fieldName string
 	var err error
 	writer.WriteObjectField(fieldName, func() {
 		for _, col := range cols {
-			err = c.writeDebeziumField(writer, model.ColumnData2Column(col, e.TableInfo), e.ForceGetExtraColumnInfo(col.ColumnID).Ft)
+			err = c.writeDebeziumField(writer, model.ColumnData2Column(col, e.TableInfo), e.TableInfo.ForceGetExtraColumnInfo(col.ColumnID).Ft)
 			if err != nil {
 				break
 			}

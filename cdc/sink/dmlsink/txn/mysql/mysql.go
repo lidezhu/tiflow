@@ -341,12 +341,12 @@ func convert2RowChanges(
 	return res
 }
 
-func convertBinaryToString(cols []*model.ColumnData, tableInfo *timodel.TableInfo) {
+func convertBinaryToString(cols []*model.ColumnData, tableInfo *model.TableInfo) {
 	for i, col := range cols {
 		if col == nil {
 			continue
 		}
-		colInfo := model.GetColumnInfoByID(tableInfo, col.ColumnID)
+		colInfo := tableInfo.ForceGetColumnInfo(col.ColumnID)
 		if colInfo.GetCharset() != "" && colInfo.GetCharset() != charset.CharsetBin {
 			colValBytes, ok := col.Value.([]byte)
 			if ok {
@@ -358,7 +358,7 @@ func convertBinaryToString(cols []*model.ColumnData, tableInfo *timodel.TableInf
 
 func (s *mysqlBackend) groupRowsByType(
 	event *dmlsink.TxnCallbackableEvent,
-	tableInfo *timodel.TableInfo,
+	tableInfo *model.TableInfo,
 	spiltUpdate bool,
 ) (insertRows, updateRows, deleteRows [][]*sqlmodel.RowChange) {
 	preAllocateSize := len(event.Event.Rows)
@@ -377,7 +377,7 @@ func (s *mysqlBackend) groupRowsByType(
 		if row.IsInsert() {
 			insertRow = append(
 				insertRow,
-				convert2RowChanges(row, tableInfo, sqlmodel.RowChangeInsert))
+				convert2RowChanges(row, tableInfo.TableInfo, sqlmodel.RowChangeInsert))
 			if len(insertRow) >= s.cfg.MaxTxnRow {
 				insertRows = append(insertRows, insertRow)
 				insertRow = make([]*sqlmodel.RowChange, 0, preAllocateSize)
@@ -387,7 +387,7 @@ func (s *mysqlBackend) groupRowsByType(
 		if row.IsDelete() {
 			deleteRow = append(
 				deleteRow,
-				convert2RowChanges(row, tableInfo, sqlmodel.RowChangeDelete))
+				convert2RowChanges(row, tableInfo.TableInfo, sqlmodel.RowChangeDelete))
 			if len(deleteRow) >= s.cfg.MaxTxnRow {
 				deleteRows = append(deleteRows, deleteRow)
 				deleteRow = make([]*sqlmodel.RowChange, 0, preAllocateSize)
@@ -398,14 +398,14 @@ func (s *mysqlBackend) groupRowsByType(
 			if spiltUpdate {
 				deleteRow = append(
 					deleteRow,
-					convert2RowChanges(row, tableInfo, sqlmodel.RowChangeDelete))
+					convert2RowChanges(row, tableInfo.TableInfo, sqlmodel.RowChangeDelete))
 				if len(deleteRow) >= s.cfg.MaxTxnRow {
 					deleteRows = append(deleteRows, deleteRow)
 					deleteRow = make([]*sqlmodel.RowChange, 0, preAllocateSize)
 				}
 				insertRow = append(
 					insertRow,
-					convert2RowChanges(row, tableInfo, sqlmodel.RowChangeInsert))
+					convert2RowChanges(row, tableInfo.TableInfo, sqlmodel.RowChangeInsert))
 				if len(insertRow) >= s.cfg.MaxTxnRow {
 					insertRows = append(insertRows, insertRow)
 					insertRow = make([]*sqlmodel.RowChange, 0, preAllocateSize)
@@ -413,7 +413,7 @@ func (s *mysqlBackend) groupRowsByType(
 			} else {
 				updateRow = append(
 					updateRow,
-					convert2RowChanges(row, tableInfo, sqlmodel.RowChangeUpdate))
+					convert2RowChanges(row, tableInfo.TableInfo, sqlmodel.RowChangeUpdate))
 				if len(updateRow) >= s.cfg.MaxMultiUpdateRowCount {
 					updateRows = append(updateRows, updateRow)
 					updateRow = make([]*sqlmodel.RowChange, 0, preAllocateSize)
@@ -437,7 +437,7 @@ func (s *mysqlBackend) groupRowsByType(
 
 func (s *mysqlBackend) batchSingleTxnDmls(
 	event *dmlsink.TxnCallbackableEvent,
-	tableInfo *timodel.TableInfo,
+	tableInfo *model.TableInfo,
 	translateToInsert bool,
 ) (sqls []string, values [][]interface{}) {
 	insertRows, updateRows, deleteRows := s.groupRowsByType(event, tableInfo, !translateToInsert)
@@ -518,7 +518,7 @@ func hasHandleKey(cols []*model.ColumnData, e *model.RowChangedEvent) bool {
 		if col == nil {
 			continue
 		}
-		if e.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
+		if e.TableInfo.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
 			return true
 		}
 	}
@@ -572,11 +572,7 @@ func (s *mysqlBackend) prepareDMLs() *preparedDMLs {
 			}
 			// only use batch dml when the table has a handle key
 			if hasHandleKey(tableColumns, firstRow) {
-				// TODO(dongmen): find a better way to get table info.
-				// FIXME: why it need to manually build table info here?
-				// tableInfo := model.BuildTiDBTableInfo(tableColumns, firstRow.IndexColumns)
-				tableInfo := firstRow.TableInfo.TableInfo
-				sql, value := s.batchSingleTxnDmls(event, tableInfo, translateToInsert)
+				sql, value := s.batchSingleTxnDmls(event, firstRow.TableInfo, translateToInsert)
 				sqls = append(sqls, sql...)
 				values = append(values, value...)
 

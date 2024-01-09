@@ -172,7 +172,7 @@ func (a *BatchEncoder) encodeValue(ctx context.Context, topic string, e *model.R
 	colInfos := make([]rowcodec.ColInfo, 0)
 	for _, colData := range e.Columns {
 		columns = append(columns, model.ColumnData2Column(colData, e.TableInfo))
-		colInfos = append(colInfos, e.ForceGetExtraColumnInfo(colData.ColumnID))
+		colInfos = append(colInfos, e.TableInfo.ForceGetExtraColumnInfo(colData.ColumnID))
 	}
 
 	input := &avroEncodeInput{

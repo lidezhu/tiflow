@@ -160,12 +160,13 @@ func newJSONMessageForDML(
 		const prefix string = ",\"sqlType\":"
 		out.RawString(prefix)
 		emptyColumn := true
+		tableInfo := e.TableInfo
 		for _, col := range columns {
 			if col != nil {
-				colFlag := e.ForceGetColumnFlagType(col.ColumnID)
-				columnInfo := e.TableInfo.GetColumnInfoByID(col.ColumnID)
+				colFlag := tableInfo.ForceGetColumnFlagType(col.ColumnID)
+				columnInfo := tableInfo.ForceGetColumnInfo(col.ColumnID)
 				colType := columnInfo.GetType()
-				colName := e.ForceGetColumnName(col.ColumnID)
+				colName := tableInfo.ForceGetColumnName(col.ColumnID)
 				if onlyHandleKey && !colFlag.IsHandleKey() {
 					continue
 				}
@@ -236,7 +237,7 @@ func newJSONMessageForDML(
 		if config.OnlyOutputUpdatedColumns {
 			newColsMap = make(map[string]*model.Column, len(e.Columns))
 			for _, col := range e.Columns {
-				colName := e.ForceGetColumnName(col.ColumnID)
+				colName := e.TableInfo.ForceGetColumnName(col.ColumnID)
 				newColsMap[colName] = model.ColumnData2Column(col, e.TableInfo)
 			}
 		}
