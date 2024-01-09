@@ -313,18 +313,18 @@ func buildRowChangedEvent(msg *message, tableInfo *model.TableInfo) (*model.RowC
 		TableInfo: tableInfo,
 	}
 
-	fieldTypeMap := make(map[string]*types.FieldType, len(tableInfo.Columns))
+	nameToIDMap := make(map[string]int64, len(tableInfo.Columns))
 	for _, columnInfo := range tableInfo.Columns {
-		fieldTypeMap[columnInfo.Name.O] = &columnInfo.FieldType
+		nameToIDMap[columnInfo.Name.O] = columnInfo.ID
 	}
 
-	columns, err := decodeColumns(msg.Data, fieldTypeMap)
+	columns, err := decodeColumns(msg.Data, nameToIDMap, tableInfo)
 	if err != nil {
 		return nil, err
 	}
 	result.Columns = columns
 
-	columns, err = decodeColumns(msg.Old, fieldTypeMap)
+	columns, err = decodeColumns(msg.Old, nameToIDMap, tableInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -335,15 +335,16 @@ func buildRowChangedEvent(msg *message, tableInfo *model.TableInfo) (*model.RowC
 	return result, nil
 }
 
-func decodeColumns(rawData map[string]interface{}, fieldTypeMap map[string]*types.FieldType) ([]*model.ColumnData, error) {
+func decodeColumns(rawData map[string]interface{}, nameToIDMap map[string]int64, tableInfo *model.TableInfo) ([]*model.ColumnData, error) {
 	var result []*model.ColumnData
 	for name, value := range rawData {
-		fieldType, ok := fieldTypeMap[name]
+		colID, ok := nameToIDMap[name]
 		if !ok {
 			log.Error("cannot found the fieldType for the column", zap.String("column", name))
 			return nil, cerror.ErrDecodeFailed.GenWithStack("cannot found the fieldType for the column %s", name)
 		}
-		col, err := decodeColumn(name, value, fieldType)
+		fieldType := &tableInfo.ForceGetColumnInfo(colID).FieldType
+		col, err := decodeColumn(colID, value, fieldType)
 		if err != nil {
 			return nil, err
 		}
@@ -566,10 +567,9 @@ func encodeValue(value interface{}, ft *types.FieldType) (interface{}, error) {
 	return result, nil
 }
 
-func decodeColumn(name string, value interface{}, fieldType *types.FieldType) (*model.ColumnData, error) {
-	// FIXME: fix column id
+func decodeColumn(colID int64, value interface{}, fieldType *types.FieldType) (*model.ColumnData, error) {
 	result := &model.ColumnData{
-		ColumnID: 0,
+		ColumnID: colID,
 		Value:    value,
 	}
 	if value == nil {
@@ -596,7 +596,7 @@ func decodeColumn(name string, value interface{}, fieldType *types.FieldType) (*
 		value, err = strconv.ParseUint(data, 10, 64)
 		if err != nil {
 			log.Error("invalid column value for bit",
-				zap.String("name", name), zap.Any("data", data),
+				zap.Int64("colID", colID), zap.Any("data", data),
 				zap.Any("type", fieldType.GetType()), zap.Error(err))
 			return nil, cerror.WrapError(cerror.ErrDecodeFailed, err)
 		}

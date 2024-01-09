@@ -464,7 +464,7 @@ func (r *RowChangedEvent) HandleKeyColInfos() ([]*ColumnData, []rowcodec.ColInfo
 }
 
 // WithHandlePrimaryFlag set `HandleKeyFlag` and `PrimaryKeyFlag`
-// TODO: use column id as params instead
+// FIXME: should remove this method
 func (r *RowChangedEvent) WithHandlePrimaryFlag(colNames map[string]struct{}) {
 	tableInfo := r.TableInfo
 	for _, col := range r.Columns {
