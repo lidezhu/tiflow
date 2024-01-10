@@ -57,8 +57,8 @@ func (e *encoder) AppendRowChangedEvent(
 	result := &common.Message{
 		Value:    value,
 		Ts:       event.CommitTs,
-		Schema:   &event.Table.Schema,
-		Table:    &event.Table.Table,
+		Schema:   event.TableInfo.GetSchemaName(),
+		Table:    event.TableInfo.GetTableName(),
 		Type:     model.MessageTypeRow,
 		Protocol: config.ProtocolSimple,
 		Callback: callback,
@@ -74,7 +74,7 @@ func (e *encoder) AppendRowChangedEvent(
 		log.Error("Single message is too large for simple",
 			zap.Int("maxMessageBytes", e.config.MaxMessageBytes),
 			zap.Int("length", result.Length()),
-			zap.Any("table", event.Table))
+			zap.Any("table", event.TableInfo.TableName))
 		return cerror.ErrMessageTooLarge.GenWithStackByArgs()
 	}
 
@@ -107,7 +107,7 @@ func (e *encoder) AppendRowChangedEvent(
 			zap.Int("maxMessageBytes", e.config.MaxMessageBytes),
 			zap.Int("originLength", result.Length()),
 			zap.Int("length", result.Length()),
-			zap.Any("table", event.Table))
+			zap.Any("table", event.TableInfo.TableName))
 		e.messages = append(e.messages, result)
 		return nil
 	}
@@ -115,7 +115,7 @@ func (e *encoder) AppendRowChangedEvent(
 	log.Error("Single message is still too large for simple after only encode handle key columns",
 		zap.Int("maxMessageBytes", e.config.MaxMessageBytes),
 		zap.Int("length", result.Length()),
-		zap.Any("table", event.Table))
+		zap.Any("table", event.TableInfo.TableName))
 	return cerror.ErrMessageTooLarge.GenWithStackByArgs()
 }
 

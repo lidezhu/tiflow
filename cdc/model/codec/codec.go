@@ -190,7 +190,7 @@ func redoLogFromV1(rv1 *codecv1.RedoLog) (r *model.RedoLog) {
 			StartTs:             rv1.RedoRow.Row.StartTs,
 			CommitTs:            rv1.RedoRow.Row.CommitTs,
 			RowID:               rv1.RedoRow.Row.RowID,
-			Table:               tableNameFromV1(rv1.RedoRow.Row.Table),
+			PhysicalTableID:     rv1.RedoRow.Row.Table.TableID,
 			TableInfo:           rv1.RedoRow.Row.TableInfo,
 			Columns:             make([]*model.ColumnData, 0, len(rv1.RedoRow.Row.Columns)),
 			PreColumns:          make([]*model.ColumnData, 0, len(rv1.RedoRow.Row.PreColumns)),

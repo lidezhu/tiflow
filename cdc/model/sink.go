@@ -313,9 +313,9 @@ type RowChangedEvent struct {
 
 	RowID int64 `json:"row-id" msg:"-"` // Deprecated. It is empty when the RowID comes from clustered index table.
 
-	// Table contains the table name and table ID.
 	// NOTICE: We store the physical table ID here, not the logical table ID.
-	Table *TableName `json:"table" msg:"table"`
+	PhysicalTableID int64 `json:"tbl-id" msg:"tbl-id"`
+
 	// NOTICE: We probably store the logical ID inside TableInfo's TableName,
 	// not the physical ID.
 	// For normal table, there is only one ID, which is the physical ID.
@@ -486,10 +486,8 @@ func (r *RowChangedEvent) WithHandlePrimaryFlag(colNames map[string]struct{}) {
 // ApproximateBytes returns approximate bytes in memory consumed by the event.
 func (r *RowChangedEvent) ApproximateBytes() int {
 	const sizeOfRowEvent = int(unsafe.Sizeof(*r))
-	const sizeOfTable = int(unsafe.Sizeof(*r.Table))
 
-	// Size of table name
-	size := len(r.Table.Schema) + len(r.Table.Table) + sizeOfTable
+	size := 0
 	// Size of cols
 	for i := range r.Columns {
 		size += r.Columns[i].ApproximateBytes
@@ -818,8 +816,8 @@ func (d *DDLEvent) FromJobWithArgs(
 //
 //msgp:ignore SingleTableTxn
 type SingleTableTxn struct {
-	Table     *TableName
-	TableInfo *TableInfo
+	PhysicalTableID int64
+	TableInfo       *TableInfo
 	// TableInfoVersion is the version of the table info, it is used to generate data path
 	// in storage sink. Generally, TableInfoVersion equals to `SingleTableTxn.TableInfo.Version`.
 	// Besides, if one table is just scheduled to a new processor, the TableInfoVersion should be
@@ -839,6 +837,19 @@ type SingleTableTxn struct {
 // GetCommitTs returns the commit timestamp of the transaction.
 func (t *SingleTableTxn) GetCommitTs() uint64 {
 	return t.CommitTs
+}
+
+func (t *SingleTableTxn) GetPhysicalTableID() int64 {
+	return t.PhysicalTableID
+}
+
+// FIXME: may remove the following two methods
+func (t *SingleTableTxn) GetSchemaName() string {
+	return *t.TableInfo.GetSchemaName()
+}
+
+func (t *SingleTableTxn) GetTableName() string {
+	return *t.TableInfo.GetTableName()
 }
 
 // TrySplitAndSortUpdateEvent split update events if unique key is updated
@@ -966,11 +977,11 @@ func splitUpdateEvent(
 
 // Append adds a row changed event into SingleTableTxn
 func (t *SingleTableTxn) Append(row *RowChangedEvent) {
-	if row.StartTs != t.StartTs || row.CommitTs != t.CommitTs || row.Table.TableID != t.Table.TableID {
+	if row.StartTs != t.StartTs || row.CommitTs != t.CommitTs || row.PhysicalTableID != t.GetPhysicalTableID() {
 		log.Panic("unexpected row change event",
 			zap.Uint64("startTs", t.StartTs),
 			zap.Uint64("commitTs", t.CommitTs),
-			zap.Any("table", t.Table),
+			zap.Any("table", t.GetPhysicalTableID()),
 			zap.Any("row", row))
 	}
 	t.Rows = append(t.Rows, row)

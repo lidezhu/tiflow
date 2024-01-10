@@ -103,12 +103,12 @@ func newJSONMessageForDML(
 	{
 		const prefix string = ",\"database\":"
 		out.RawString(prefix)
-		out.String(e.Table.Schema)
+		out.String(*e.TableInfo.GetSchemaName())
 	}
 	{
 		const prefix string = ",\"table\":"
 		out.RawString(prefix)
-		out.String(e.Table.Table)
+		out.String(*e.TableInfo.GetTableName())
 	}
 	{
 		const prefix string = ",\"pkNames\":"
@@ -404,8 +404,8 @@ func (c *JSONRowEventEncoder) AppendRowChangedEvent(
 		Key:      nil,
 		Value:    value,
 		Ts:       e.CommitTs,
-		Schema:   &e.Table.Schema,
-		Table:    &e.Table.Table,
+		Schema:   e.TableInfo.GetSchemaName(),
+		Table:    e.TableInfo.GetTableName(),
 		Type:     model.MessageTypeRow,
 		Protocol: config.ProtocolCanalJSON,
 		Callback: callback,
@@ -419,7 +419,7 @@ func (c *JSONRowEventEncoder) AppendRowChangedEvent(
 			log.Error("Single message is too large for canal-json",
 				zap.Int("maxMessageBytes", c.config.MaxMessageBytes),
 				zap.Int("length", originLength),
-				zap.Any("table", e.Table))
+				zap.Any("table", e.TableInfo.TableName))
 			return cerror.ErrMessageTooLarge.GenWithStackByArgs()
 		}
 
@@ -442,14 +442,14 @@ func (c *JSONRowEventEncoder) AppendRowChangedEvent(
 					zap.Int("maxMessageBytes", c.config.MaxMessageBytes),
 					zap.Int("originLength", originLength),
 					zap.Int("length", length),
-					zap.Any("table", e.Table))
+					zap.Any("table", e.TableInfo.TableName))
 				return cerror.ErrMessageTooLarge.GenWithStackByArgs()
 			}
 			log.Warn("Single message is too large for canal-json, only encode handle-key columns",
 				zap.Int("maxMessageBytes", c.config.MaxMessageBytes),
 				zap.Int("originLength", originLength),
 				zap.Int("length", length),
-				zap.Any("table", e.Table))
+				zap.Any("table", e.TableInfo.TableName))
 		}
 
 		if c.config.LargeMessageHandle.EnableClaimCheck() {
@@ -494,7 +494,7 @@ func (c *JSONRowEventEncoder) newClaimCheckLocationMessage(
 		log.Warn("Single message is too large for canal-json, when create the claim check location message",
 			zap.Int("maxMessageBytes", c.config.MaxMessageBytes),
 			zap.Int("length", length),
-			zap.Any("table", event.Table))
+			zap.Any("table", event.TableInfo.TableName))
 		return nil, cerror.ErrMessageTooLarge.GenWithStackByArgs(length)
 	}
 	return result, nil

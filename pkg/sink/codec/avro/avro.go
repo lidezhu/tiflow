@@ -91,7 +91,12 @@ func (a *BatchEncoder) encodeKey(ctx context.Context, topic string, e *model.Row
 		columns:  cols,
 		colInfos: colInfos,
 	}
-	avroCodec, header, err := a.getKeySchemaCodec(ctx, topic, e.Table, e.TableInfo.Version, keyColumns)
+	avroCodec, header, err := a.getKeySchemaCodec(ctx, topic, &model.TableName{
+		Schema:      *e.TableInfo.GetSchemaName(),
+		Table:       *e.TableInfo.GetTableName(),
+		TableID:     e.PhysicalTableID,
+		IsPartition: e.TableInfo.IsPartitionTable(),
+	}, e.TableInfo.Version, keyColumns)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -183,7 +188,12 @@ func (a *BatchEncoder) encodeValue(ctx context.Context, topic string, e *model.R
 		return nil, nil
 	}
 
-	avroCodec, header, err := a.getValueSchemaCodec(ctx, topic, e.Table, e.TableInfo.Version, input)
+	avroCodec, header, err := a.getValueSchemaCodec(ctx, topic, &model.TableName{
+		Schema:      *e.TableInfo.GetSchemaName(),
+		Table:       *e.TableInfo.GetTableName(),
+		TableID:     e.PhysicalTableID,
+		IsPartition: e.TableInfo.IsPartitionTable(),
+	}, e.TableInfo.Version, input)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -242,8 +252,8 @@ func (a *BatchEncoder) AppendRowChangedEvent(
 		value,
 		e.CommitTs,
 		model.MessageTypeRow,
-		&e.Table.Schema,
-		&e.Table.Table,
+		e.TableInfo.GetSchemaName(),
+		e.TableInfo.GetTableName(),
 	)
 	message.Callback = callback
 	message.IncRowsCount()
@@ -252,7 +262,7 @@ func (a *BatchEncoder) AppendRowChangedEvent(
 		log.Warn("Single message is too large for avro",
 			zap.Int("maxMessageBytes", a.config.MaxMessageBytes),
 			zap.Int("length", message.Length()),
-			zap.Any("table", e.Table))
+			zap.Any("table", e.TableInfo.TableName))
 		return cerror.ErrMessageTooLarge.GenWithStackByArgs(message.Length())
 	}
 

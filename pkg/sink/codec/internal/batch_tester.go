@@ -28,7 +28,7 @@ var (
 	// CodecRowCases defines test cases for RowChangedEvent.
 	CodecRowCases = [][]*model.RowChangedEvent{{{
 		CommitTs: 424316552636792833,
-		Table:    &model.TableName{Schema: "a", Table: "b"},
+		// Table:    &model.TableName{Schema: "a", Table: "b"},
 		PreColumns: []*model.ColumnData{
 			{ColumnID: 100, Value: []byte("varchar0")},
 
@@ -55,7 +55,7 @@ var (
 		},
 	}}, {{
 		CommitTs: 424316553934667777,
-		Table:    &model.TableName{Schema: "a", Table: "c"},
+		// Table:    &model.TableName{Schema: "a", Table: "c"},
 		PreColumns: []*model.ColumnData{
 			{ColumnID: 100, Value: []byte("varchar0")},
 
@@ -82,7 +82,7 @@ var (
 		},
 	}, {
 		CommitTs: 424316554327097345,
-		Table:    &model.TableName{Schema: "a", Table: "d"},
+		// Table:    &model.TableName{Schema: "a", Table: "d"},
 		PreColumns: []*model.ColumnData{
 			{ColumnID: 100, Value: []byte("varchar0")},
 			// {Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
@@ -105,7 +105,7 @@ var (
 		},
 	}, {
 		CommitTs: 424316554746789889,
-		Table:    &model.TableName{Schema: "a", Table: "e"},
+		// Table:    &model.TableName{Schema: "a", Table: "e"},
 		PreColumns: []*model.ColumnData{
 			{ColumnID: 100, Value: []byte("varchar0")},
 			// {Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
@@ -130,7 +130,7 @@ var (
 		},
 	}, {
 		CommitTs: 424316555073945601,
-		Table:    &model.TableName{Schema: "a", Table: "f", TableID: 6, IsPartition: true},
+		// Table:    &model.TableName{Schema: "a", Table: "f", TableID: 6, IsPartition: true},
 		PreColumns: []*model.ColumnData{
 			{ColumnID: 100, Value: []byte("varchar0")},
 

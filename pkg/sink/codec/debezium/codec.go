@@ -299,8 +299,8 @@ func (c *dbzCodec) EncodeRowChangedEvent(
 				// https://debezium.io/documentation/reference/stable/connectors/mysql.html#mysql-create-events
 				jWriter.WriteInt64Field("ts_ms", commitTime.UnixMilli())
 				jWriter.WriteBoolField("snapshot", false)
-				jWriter.WriteStringField("db", e.Table.Schema)
-				jWriter.WriteStringField("table", e.Table.Table)
+				jWriter.WriteStringField("db", *e.TableInfo.GetSchemaName())
+				jWriter.WriteStringField("table", *e.TableInfo.GetTableName())
 				jWriter.WriteInt64Field("server_id", 0)
 				jWriter.WriteNullField("gtid")
 				jWriter.WriteStringField("file", "")

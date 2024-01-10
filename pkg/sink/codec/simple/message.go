@@ -306,10 +306,10 @@ func newDDLEvent(msg *message) *model.DDLEvent {
 func buildRowChangedEvent(msg *message, tableInfo *model.TableInfo) (*model.RowChangedEvent, error) {
 	result := &model.RowChangedEvent{
 		CommitTs: msg.CommitTs,
-		Table: &model.TableName{
-			Schema: msg.Schema,
-			Table:  msg.Table,
-		},
+		// Table: &model.TableName{
+		// 	Schema: msg.Schema,
+		// 	Table:  msg.Table,
+		// },
 		TableInfo: tableInfo,
 	}
 
@@ -434,8 +434,8 @@ func newDMLMessage(
 ) (*message, error) {
 	m := &message{
 		Version:       defaultVersion,
-		Schema:        event.Table.Schema,
-		Table:         event.Table.Table,
+		Schema:        *event.TableInfo.GetSchemaName(),
+		Table:         *event.TableInfo.GetTableName(),
 		CommitTs:      event.CommitTs,
 		BuildTs:       time.Now().UnixMilli(),
 		SchemaVersion: event.TableInfo.UpdateTS,
