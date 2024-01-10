@@ -503,40 +503,25 @@ func (r *RowChangedEvent) ApproximateBytes() int {
 	return size
 }
 
-// func BuildRowChangedEvent4Test(
-// 	commitTS uint64,
-// 	tableName *TableName,
-// 	colInfos []rowcodec.ColInfo,
-// ) *RowChangedEvent {
-// 	return &RowChangedEvent{
-// 		StartTs:   0, // not used in test
-// 		CommitTs:  commitTS,
-// 		RowID:     0, // not used in test
-// 		Table:     tableName,
-// 		ColInfos:  colInfos,
-// 		TableInfo: nil, // FIXME
-// 		PreColumns: []*Column{
-// 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
-// 			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
-// 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
-// 			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/01 00:00:00"},
-// 			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/01 00:00:00"},
-// 			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
-// 			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
-// 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-// 		},
-// 		Columns: []*Column{
-// 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
-// 			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
-// 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
-// 			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
-// 			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
-// 			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
-// 			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
-// 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-// 		},
-// 	}
-// }
+// Only used in test
+func Column2ColumnData(col *Column, tableInfo *TableInfo) *ColumnData {
+	colID := tableInfo.ForceGetColumnIDByName(col.Name)
+	return &ColumnData{
+		ColumnID: colID,
+		Value:    col.Value,
+	}
+}
+
+func Columns2ColumnDatas(cols []*Column, tableInfo *TableInfo) []*ColumnData {
+	columns := make([]*ColumnData, len(cols))
+	for i, col := range cols {
+		if col == nil {
+			continue
+		}
+		columns[i] = Column2ColumnData(col, tableInfo)
+	}
+	return columns
+}
 
 // Column represents a column value in row changed event
 type Column struct {
@@ -547,6 +532,9 @@ type Column struct {
 	Flag      ColumnFlagType `json:"flag" msg:"-"`
 	Value     interface{}    `json:"value" msg:"-"`
 	Default   interface{}    `json:"default" msg:"-"`
+
+	// ApproximateBytes is approximate bytes consumed by the column.
+	ApproximateBytes int `json:"-" msg:"-"`
 }
 
 type ColumnData struct {
@@ -595,12 +583,17 @@ type RedoColumn struct {
 	Flag              uint64 `msg:"flag"`
 }
 
-// BuildTiDBTableInfo builds a TiDB TableInfo from given information.
-func BuildTiDBTableInfo(columns []*Column, indexColumns [][]int) *model.TableInfo {
-	ret := &model.TableInfo{}
-	// nowhere will use this field, so we set a debug message
-	ret.Name = model.NewCIStr("BuildTiDBTableInfo")
+func BuildTableInfo4Test(schemaName, tableName string, columns []*Column, indexColumns [][]int) *TableInfo {
+	tidbTableInfo := BuildTiDBTableInfo(tableName, columns, [][]int{})
+	return WrapTableInfo(100 /* not used */, schemaName, 1000 /* not used */, tidbTableInfo)
+}
 
+// BuildTiDBTableInfo builds a TiDB TableInfo from given information.
+func BuildTiDBTableInfo(tableName string, columns []*Column, indexColumns [][]int) *model.TableInfo {
+	ret := &model.TableInfo{}
+	ret.Name = model.NewCIStr(tableName)
+
+	nextColID := int64(200)
 	for i, col := range columns {
 		columnInfo := &model.ColumnInfo{
 			Offset: i,
@@ -619,6 +612,9 @@ func BuildTiDBTableInfo(columns []*Column, indexColumns [][]int) *model.TableInf
 			ret.Columns = append(ret.Columns, columnInfo)
 			continue
 		}
+		// FIXME: fix special column id
+		columnInfo.ID = nextColID
+		nextColID += 1
 		columnInfo.Name = model.NewCIStr(col.Name)
 		columnInfo.SetType(col.Type)
 		// TiKV always use utf8mb4 to store, and collation is not recorded by CDC

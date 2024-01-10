@@ -166,7 +166,9 @@ func canalJSONMessage2RowChange(msg canalJSONMessageInterface) (*model.RowChange
 	var err error
 	if msg.eventType() == canal.EventType_DELETE {
 		// for `DELETE` event, `data` contain the old data, set it as the `PreColumns`
-		result.PreColumns, err = canalJSONColumnMap2RowChangeColumns(msg.getData(), mysqlType)
+		preCols, err := canalJSONColumnMap2RowChangeColumns(msg.getData(), mysqlType)
+		result.TableInfo = model.BuildTableInfo4Test(*msg.getSchema(), *msg.getTable(), preCols, nil)
+		result.PreColumns = model.Columns2ColumnDatas(preCols, result.TableInfo)
 		// canal-json encoder does not encode `Flag` information into the result,
 		// we have to set the `Flag` to make it can be handled by MySQL Sink.
 		// see https://github.com/pingcap/tiflow/blob/7bfce98/cdc/sink/mysql.go#L869-L888
@@ -175,14 +177,18 @@ func canalJSONMessage2RowChange(msg canalJSONMessageInterface) (*model.RowChange
 	}
 
 	// for `INSERT` and `UPDATE`, `data` contain fresh data, set it as the `Columns`
-	result.Columns, err = canalJSONColumnMap2RowChangeColumns(msg.getData(), mysqlType)
+	cols, err := canalJSONColumnMap2RowChangeColumns(msg.getData(), mysqlType)
+	result.TableInfo = model.BuildTableInfo4Test(*msg.getSchema(), *msg.getTable(), cols, nil)
+	result.Columns = model.Columns2ColumnDatas(cols, result.TableInfo)
 	if err != nil {
 		return nil, err
 	}
 
 	// for `UPDATE`, `old` contain old data, set it as the `PreColumns`
 	if msg.eventType() == canal.EventType_UPDATE {
-		result.PreColumns, err = canalJSONColumnMap2RowChangeColumns(msg.getOld(), mysqlType)
+		preCols, err := canalJSONColumnMap2RowChangeColumns(msg.getOld(), mysqlType)
+		result.TableInfo = model.BuildTableInfo4Test(*msg.getSchema(), *msg.getTable(), cols, nil)
+		result.PreColumns = model.Columns2ColumnDatas(preCols, result.TableInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -192,8 +198,8 @@ func canalJSONMessage2RowChange(msg canalJSONMessageInterface) (*model.RowChange
 	return result, nil
 }
 
-func canalJSONColumnMap2RowChangeColumns(cols map[string]interface{}, mysqlType map[string]string) ([]*model.ColumnData, error) {
-	result := make([]*model.ColumnData, 0, len(cols))
+func canalJSONColumnMap2RowChangeColumns(cols map[string]interface{}, mysqlType map[string]string) ([]*model.Column, error) {
+	result := make([]*model.Column, 0, len(cols))
 	for name, value := range cols {
 		mysqlTypeStr, ok := mysqlType[name]
 		if !ok {
@@ -208,17 +214,17 @@ func canalJSONColumnMap2RowChangeColumns(cols map[string]interface{}, mysqlType 
 		return nil, nil
 	}
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].ColumnID > result[j].ColumnID
+		return strings.Compare(result[i].Name, result[j].Name) > 0
 	})
 	return result, nil
 }
 
-func canalJSONFormatColumn(value interface{}, name string, mysqlTypeStr string) *model.ColumnData {
+func canalJSONFormatColumn(value interface{}, name string, mysqlTypeStr string) *model.Column {
 	mysqlType := utils.ExtractBasicMySQLType(mysqlTypeStr)
-	// FIXME: fix ColumnID
-	result := &model.ColumnData{
-		ColumnID: 0,
-		Value:    value,
+	result := &model.Column{
+		Type:  mysqlType,
+		Name:  name,
+		Value: value,
 	}
 	if result.Value == nil {
 		return result

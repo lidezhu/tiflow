@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"sort"
+	"strings"
 
 	timodel "github.com/pingcap/tidb/pkg/parser/model"
 	"github.com/pingcap/tiflow/cdc/model"
@@ -143,21 +144,22 @@ func msgToRowChange(key *internal.MessageKey, value *messageRow) *model.RowChang
 	// TODO: we lost the startTs from kafka message
 	// startTs-based txn filter is out of work
 	e.CommitTs = key.Ts
-	// e.Table = &model.TableName{
-	// 	Schema: key.Schema,
-	// 	Table:  key.Table,
-	// }
 	// TODO: we lost the tableID from kafka message
-	// if key.Partition != nil {
-	// 	e.Table.TableID = *key.Partition
-	// 	e.Table.IsPartition = true
-	// }
+	if key.Partition != nil {
+		e.PhysicalTableID = *key.Partition
+		e.TableInfo.SetPartition4Test()
+	}
 
 	if len(value.Delete) != 0 {
-		e.PreColumns = codecColumns2RowChangeColumns(value.Delete)
+		preCols := codecColumns2RowChangeColumns(value.Delete)
+		e.TableInfo = model.BuildTableInfo4Test(key.Schema, key.Table, preCols, nil)
+		e.PreColumns = model.Columns2ColumnDatas(preCols, e.TableInfo)
 	} else {
-		e.Columns = codecColumns2RowChangeColumns(value.Update)
-		e.PreColumns = codecColumns2RowChangeColumns(value.PreColumns)
+		cols := codecColumns2RowChangeColumns(value.Update)
+		preCols := codecColumns2RowChangeColumns(value.PreColumns)
+		e.TableInfo = model.BuildTableInfo4Test(key.Schema, key.Table, cols, nil)
+		e.Columns = model.Columns2ColumnDatas(cols, e.TableInfo)
+		e.PreColumns = model.Columns2ColumnDatas(preCols, e.TableInfo)
 	}
 	return e
 }
@@ -181,8 +183,8 @@ func rowChangeColumns2CodecColumns(cols []*model.Column, onlyHandleKeyColumns bo
 	return jsonCols
 }
 
-func codecColumns2RowChangeColumns(cols map[string]internal.Column) []*model.ColumnData {
-	sinkCols := make([]*model.ColumnData, 0, len(cols))
+func codecColumns2RowChangeColumns(cols map[string]internal.Column) []*model.Column {
+	sinkCols := make([]*model.Column, 0, len(cols))
 	for name, col := range cols {
 		c := col.ToRowChangeColumn(name)
 		sinkCols = append(sinkCols, c)
@@ -191,7 +193,7 @@ func codecColumns2RowChangeColumns(cols map[string]internal.Column) []*model.Col
 		return nil
 	}
 	sort.Slice(sinkCols, func(i, j int) bool {
-		return sinkCols[i].ColumnID > sinkCols[j].ColumnID
+		return strings.Compare(sinkCols[i].Name, sinkCols[j].Name) > 0
 	})
 	return sinkCols
 }

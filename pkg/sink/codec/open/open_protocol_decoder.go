@@ -220,11 +220,12 @@ func (b *BatchDecoder) NextRowChangedEvent() (*model.RowChangedEvent, error) {
 
 func (b *BatchDecoder) buildColumns(
 	holder *common.ColumnsHolder, handleKeyColumns map[string]interface{},
-) []*model.ColumnData {
+) []*model.Column {
 	columnsCount := holder.Length()
-	columns := make([]*model.ColumnData, 0, columnsCount)
+	columns := make([]*model.Column, 0, columnsCount)
 	for i := 0; i < columnsCount; i++ {
 		columnType := holder.Types[i]
+		name := columnType.Name()
 		mysqlType := types.StrToType(strings.ToLower(columnType.DatabaseTypeName()))
 
 		var value interface{}
@@ -235,10 +236,14 @@ func (b *BatchDecoder) buildColumns(
 			value = string(value.([]uint8))
 		}
 
-		// FIXME: fix ColumnID
-		column := &model.ColumnData{
-			ColumnID: 0,
-			Value:    value,
+		column := &model.Column{
+			Name:  name,
+			Type:  mysqlType,
+			Value: value,
+		}
+
+		if _, ok := handleKeyColumns[name]; ok {
+			column.Flag = model.PrimaryKeyFlag | model.HandleKeyFlag
 		}
 
 		columns = append(columns, column)
@@ -267,7 +272,7 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 			return nil, err
 		}
 		columns := b.buildColumns(holder, conditions)
-		handleKeyOnlyEvent.Columns = columns
+		handleKeyOnlyEvent.Columns = model.Columns2ColumnDatas(columns, handleKeyOnlyEvent.TableInfo)
 	} else if handleKeyOnlyEvent.IsDelete() {
 		conditions := make(map[string]interface{}, len(handleKeyOnlyEvent.PreColumns))
 		for _, col := range handleKeyOnlyEvent.PreColumns {
@@ -279,7 +284,7 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 			return nil, err
 		}
 		preColumns := b.buildColumns(holder, conditions)
-		handleKeyOnlyEvent.PreColumns = preColumns
+		handleKeyOnlyEvent.PreColumns = model.Columns2ColumnDatas(preColumns, handleKeyOnlyEvent.TableInfo)
 	} else if handleKeyOnlyEvent.IsUpdate() {
 		conditions := make(map[string]interface{}, len(handleKeyOnlyEvent.Columns))
 		for _, col := range handleKeyOnlyEvent.Columns {
@@ -291,7 +296,7 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 			return nil, err
 		}
 		columns := b.buildColumns(holder, conditions)
-		handleKeyOnlyEvent.Columns = columns
+		handleKeyOnlyEvent.Columns = model.Columns2ColumnDatas(columns, handleKeyOnlyEvent.TableInfo)
 
 		conditions = make(map[string]interface{}, len(handleKeyOnlyEvent.PreColumns))
 		for _, col := range handleKeyOnlyEvent.PreColumns {
@@ -303,7 +308,7 @@ func (b *BatchDecoder) assembleHandleKeyOnlyEvent(
 			return nil, err
 		}
 		preColumns := b.buildColumns(holder, conditions)
-		handleKeyOnlyEvent.PreColumns = preColumns
+		handleKeyOnlyEvent.PreColumns = model.Columns2ColumnDatas(preColumns, handleKeyOnlyEvent.TableInfo)
 	}
 
 	return handleKeyOnlyEvent, nil

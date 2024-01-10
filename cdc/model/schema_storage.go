@@ -329,6 +329,12 @@ func (ti *TableInfo) IsPartitionTable() bool {
 	return ti.GetPartitionInfo() != nil
 }
 
+func (ti *TableInfo) SetPartition4Test() {
+	ti.TableInfo.Partition = &model.PartitionInfo{
+		Enable: true,
+	}
+}
+
 func (ti *TableInfo) String() string {
 	return fmt.Sprintf("TableInfo, ID: %d, Name:%s, ColNum: %d, IdxNum: %d, PKIsHandle: %t", ti.ID, ti.TableName, len(ti.Columns), len(ti.Indices), ti.PKIsHandle)
 }

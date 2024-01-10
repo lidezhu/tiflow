@@ -474,11 +474,13 @@ func TestTrySplitAndSortUpdateEvent(t *testing.T) {
 		},
 	}
 
+	tableInfo := WrapTableInfo(1, "test", 1, BuildTiDBTableInfo(columns, [][]int{}))
 	events := []*RowChangedEvent{
 		{
 			CommitTs:   1,
-			Columns:    columns,
-			PreColumns: preColumns,
+			TableInfo:  tableInfo,
+			Columns:    columns2ColumnDatas(columns, tableInfo),
+			PreColumns: columns2ColumnDatas(preColumns, tableInfo),
 		},
 	}
 	result, err := trySplitAndSortUpdateEvent(events)
@@ -516,8 +518,9 @@ func TestTrySplitAndSortUpdateEvent(t *testing.T) {
 	events = []*RowChangedEvent{
 		{
 			CommitTs:   1,
-			Columns:    columns,
-			PreColumns: preColumns,
+			TableInfo:  tableInfo,
+			Columns:    columns2ColumnDatas(columns, tableInfo),
+			PreColumns: columns2ColumnDatas(preColumns, tableInfo),
 		},
 	}
 	result, err = trySplitAndSortUpdateEvent(events)
@@ -556,8 +559,9 @@ func TestTrySplitAndSortUpdateEvent(t *testing.T) {
 	events = []*RowChangedEvent{
 		{
 			CommitTs:   1,
-			Columns:    columns,
-			PreColumns: preColumns,
+			TableInfo:  tableInfo,
+			Columns:    columns2ColumnDatas(columns, tableInfo),
+			PreColumns: columns2ColumnDatas(preColumns, tableInfo),
 		},
 	}
 	result, err = trySplitAndSortUpdateEvent(events)

@@ -65,20 +65,30 @@ func (b *batchDecoder) NextRowChangedEvent() (*model.RowChangedEvent, error) {
 		return nil, errors.Trace(err)
 	}
 	ev := &model.RowChangedEvent{}
+	var cols, preCols []*model.Column
 	if oldValue != nil {
-		if ev.PreColumns, err = oldValue.ToModel(); err != nil {
+		if preCols, err = oldValue.ToModel(); err != nil {
 			return nil, errors.Trace(err)
 		}
 	}
 	if newValue != nil {
-		if ev.Columns, err = newValue.ToModel(); err != nil {
+		if cols, err = newValue.ToModel(); err != nil {
 			return nil, errors.Trace(err)
 		}
 	}
 	ev.CommitTs = b.headers.GetTs(b.index)
-	// FIXME: fix TableInfo and set partition
+	ev.TableInfo = model.BuildTableInfo4Test(b.headers.GetSchema(b.index), b.headers.GetTable(b.index), cols, nil)
+	if len(preCols) > 0 {
+		ev.PreColumns = model.Columns2ColumnDatas(preCols, ev.TableInfo)
+	}
+	if len(cols) > 0 {
+		ev.Columns = model.Columns2ColumnDatas(cols, ev.TableInfo)
+	}
 	partition := b.headers.GetPartition(b.index)
-	ev.PhysicalTableID = partition
+	if partition >= 0 {
+		ev.TableInfo.SetPartition4Test()
+		ev.PhysicalTableID = partition
+	}
 	b.index++
 	return ev, nil
 }

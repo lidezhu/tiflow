@@ -168,7 +168,7 @@ func assembleEvent(keyMap, valueMap, schema map[string]interface{}, isDelete boo
 		return nil, errors.New("schema fields should be a map")
 	}
 
-	columns := make([]*model.ColumnData, 0, len(valueMap))
+	columns := make([]*model.Column, 0, len(valueMap))
 	// fields is ordered by the column id, so iterate over it to build columns
 	// it's also the order to calculate the checksum.
 	for _, item := range fields {
@@ -218,18 +218,19 @@ func assembleEvent(keyMap, valueMap, schema map[string]interface{}, isDelete boo
 			return nil, errors.Trace(err)
 		}
 
-		col := &model.ColumnData{
-			// FIXME: get right column id
-			ColumnID: 0,
-			Value:    value,
+		col := &model.Column{
+			Name:  colName,
+			Type:  mysqlType,
+			Flag:  flag,
+			Value: value,
 		}
 		columns = append(columns, col)
 	}
 
 	// "namespace.schema"
-	// namespace := schema["namespace"].(string)
-	// schemaName := strings.Split(namespace, ".")[1]
-	// tableName := schema["name"].(string)
+	namespace := schema["namespace"].(string)
+	schemaName := strings.Split(namespace, ".")[1]
+	tableName := schema["name"].(string)
 
 	var commitTs int64
 	if !isDelete {
@@ -240,18 +241,14 @@ func assembleEvent(keyMap, valueMap, schema map[string]interface{}, isDelete boo
 		commitTs = o.(int64)
 	}
 
-	// FIXME: fix table info
 	event := new(model.RowChangedEvent)
 	event.CommitTs = uint64(commitTs)
-	// event.Table = &model.TableName{
-	// 	Schema: schemaName,
-	// 	Table:  tableName,
-	// }
+	event.TableInfo = model.BuildTableInfo4Test(schemaName, tableName, columns, [][]int{})
 
 	if isDelete {
-		event.PreColumns = columns
+		event.PreColumns = model.Columns2ColumnDatas(columns, event.TableInfo)
 	} else {
-		event.Columns = columns
+		event.Columns = model.Columns2ColumnDatas(columns, event.TableInfo)
 	}
 
 	return event, nil
