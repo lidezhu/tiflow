@@ -16,10 +16,12 @@ package codec
 import (
 	"encoding/binary"
 
+	"github.com/ngaut/log"
 	timodel "github.com/pingcap/tidb/pkg/parser/model"
 	"github.com/pingcap/tiflow/cdc/model"
 	codecv1 "github.com/pingcap/tiflow/cdc/model/codec/v1"
 	"github.com/tinylib/msgp/msgp"
+	"go.uber.org/zap"
 )
 
 const (
@@ -219,6 +221,7 @@ func redoLogFromV1(rv1 *codecv1.RedoLog) (r *model.RedoLog) {
 		}
 		r.RedoDDL.DDL.Done.Store(rv1.RedoDDL.DDL.Done)
 	}
+	log.Info("table info is nil ", zap.Bool("value", r.RedoRow.Row.TableInfo == nil))
 	return
 }
 
