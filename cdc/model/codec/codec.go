@@ -151,6 +151,7 @@ func UnmarshalRedoLog(bts []byte) (r *model.RedoLog, o []byte, err error) {
 			panic("unsupported codec version")
 		}
 	}
+	log.Info("table info is nil ", zap.Bool("value", r.RedoRow.Row.TableInfo == nil))
 	return
 }
 
@@ -221,7 +222,6 @@ func redoLogFromV1(rv1 *codecv1.RedoLog) (r *model.RedoLog) {
 		}
 		r.RedoDDL.DDL.Done.Store(rv1.RedoDDL.DDL.Done)
 	}
-	log.Info("table info is nil ", zap.Bool("value", r.RedoRow.Row.TableInfo == nil))
 	return
 }
 
