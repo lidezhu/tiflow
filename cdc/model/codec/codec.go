@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tiflow/cdc/model"
 	codecv1 "github.com/pingcap/tiflow/cdc/model/codec/v1"
 	"github.com/tinylib/msgp/msgp"
-	"go.uber.org/zap"
 )
 
 const (
@@ -151,7 +150,7 @@ func UnmarshalRedoLog(bts []byte) (r *model.RedoLog, o []byte, err error) {
 			panic("unsupported codec version")
 		}
 	}
-	log.Info("table info is nil ", zap.Bool("value", r.RedoRow.Row.TableInfo == nil))
+	log.Info("table info is nil %v", r.RedoRow.Row.TableInfo == nil)
 	return
 }
 
