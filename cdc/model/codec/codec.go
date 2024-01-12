@@ -41,7 +41,8 @@ var (
 )
 
 func postUnmarshal(r *model.RedoLog) {
-	workaroundColumn := func(c *model.ColumnData, redoC *model.RedoColumn) {
+	workaroundColumn := func(c *model.Column, redoC *model.RedoColumn) {
+		c.Flag = model.ColumnFlagType(redoC.Flag)
 		if redoC.ValueIsEmptyBytes {
 			c.Value = []byte{}
 		} else {
@@ -91,7 +92,7 @@ func preMarshal(r *model.RedoLog) {
 			redoC := model.RedoColumn{}
 			if c != nil {
 				redoC.Value = c.Value
-				redoC.Flag = uint64(*row.TableInfo.ForceGetColumnFlagType(c.ColumnID))
+				redoC.Flag = uint64(c.Flag)
 				workaroundColumn(&redoC)
 			}
 			r.RedoRow.Columns = append(r.RedoRow.Columns, redoC)
@@ -100,7 +101,7 @@ func preMarshal(r *model.RedoLog) {
 			redoC := model.RedoColumn{}
 			if c != nil {
 				redoC.Value = c.Value
-				redoC.Flag = uint64(*row.TableInfo.ForceGetColumnFlagType(c.ColumnID))
+				redoC.Flag = uint64(c.Flag)
 				workaroundColumn(&redoC)
 			}
 			r.RedoRow.PreColumns = append(r.RedoRow.PreColumns, redoC)
@@ -160,15 +161,6 @@ func MarshalRedoLog(r *model.RedoLog, b []byte) (o []byte, err error) {
 	return
 }
 
-// MarshalRowAsRedoLog converts a RowChangedEvent into RedoLog, and then marshals it.
-func MarshalRowAsRedoLog(r *model.RowChangedEvent, b []byte) (o []byte, err error) {
-	log := &model.RedoLog{
-		RedoRow: model.RedoRowChangedEvent{Row: r},
-		Type:    model.RedoLogTypeRow,
-	}
-	return MarshalRedoLog(log, b)
-}
-
 // MarshalDDLAsRedoLog converts a DDLEvent into RedoLog, and then marshals it.
 func MarshalDDLAsRedoLog(d *model.DDLEvent, b []byte) (o []byte, err error) {
 	log := &model.RedoLog{
@@ -186,23 +178,18 @@ func decodeVersion(bts []byte) (uint16, []byte) {
 func redoLogFromV1(rv1 *codecv1.RedoLog) (r *model.RedoLog) {
 	r = &model.RedoLog{Type: (model.RedoLogType)(rv1.Type)}
 	if rv1.RedoRow != nil && rv1.RedoRow.Row != nil {
-		r.RedoRow.Row = &model.RowChangedEvent{
-			StartTs:             rv1.RedoRow.Row.StartTs,
-			CommitTs:            rv1.RedoRow.Row.CommitTs,
-			RowID:               rv1.RedoRow.Row.RowID,
-			PhysicalTableID:     rv1.RedoRow.Row.Table.TableID,
-			TableInfo:           rv1.RedoRow.Row.TableInfo,
-			Columns:             make([]*model.ColumnData, 0, len(rv1.RedoRow.Row.Columns)),
-			PreColumns:          make([]*model.ColumnData, 0, len(rv1.RedoRow.Row.PreColumns)),
-			ApproximateDataSize: rv1.RedoRow.Row.ApproximateDataSize,
-			SplitTxn:            rv1.RedoRow.Row.SplitTxn,
-			ReplicatingTs:       rv1.RedoRow.Row.ReplicatingTs,
+		r.RedoRow.Row = &model.RowChangedEventInRedoLog{
+			StartTs:    rv1.RedoRow.Row.StartTs,
+			CommitTs:   rv1.RedoRow.Row.CommitTs,
+			Table:      tableNameFromV1(rv1.RedoRow.Row.Table),
+			Columns:    make([]*model.Column, 0, len(rv1.RedoRow.Row.Columns)),
+			PreColumns: make([]*model.Column, 0, len(rv1.RedoRow.Row.PreColumns)),
 		}
 		for _, c := range rv1.RedoRow.Row.Columns {
-			r.RedoRow.Row.Columns = append(r.RedoRow.Row.Columns, columnFromV1(c, rv1.RedoRow.Row.TableInfo))
+			r.RedoRow.Row.Columns = append(r.RedoRow.Row.Columns, columnFromV1(c))
 		}
 		for _, c := range rv1.RedoRow.Row.PreColumns {
-			r.RedoRow.Row.PreColumns = append(r.RedoRow.Row.PreColumns, columnFromV1(c, rv1.RedoRow.Row.TableInfo))
+			r.RedoRow.Row.PreColumns = append(r.RedoRow.Row.PreColumns, columnFromV1(c))
 		}
 	}
 	if rv1.RedoDDL != nil && rv1.RedoDDL.DDL != nil {
@@ -228,10 +215,14 @@ func tableNameFromV1(t *codecv1.TableName) *model.TableName {
 	}
 }
 
-func columnFromV1(c *codecv1.Column, tableInfo *model.TableInfo) *model.ColumnData {
-	return &model.ColumnData{
-		ColumnID:         tableInfo.ForceGetColumnIDByName(c.Name),
+func columnFromV1(c *codecv1.Column) *model.Column {
+	return &model.Column{
+		Name:             c.Name,
+		Type:             c.Type,
+		Charset:          c.Charset,
+		Flag:             c.Flag,
 		Value:            c.Value,
+		Default:          c.Default,
 		ApproximateBytes: c.ApproximateBytes,
 	}
 }

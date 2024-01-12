@@ -243,7 +243,7 @@ func assembleEvent(keyMap, valueMap, schema map[string]interface{}, isDelete boo
 
 	event := new(model.RowChangedEvent)
 	event.CommitTs = uint64(commitTs)
-	event.TableInfo = model.BuildTableInfo4Test(schemaName, tableName, columns, [][]int{})
+	event.TableInfo = model.BuildTableInfo(schemaName, tableName, columns, [][]int{})
 
 	if isDelete {
 		event.PreColumns = model.Columns2ColumnDatas(columns, event.TableInfo)

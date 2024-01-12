@@ -152,12 +152,12 @@ func msgToRowChange(key *internal.MessageKey, value *messageRow) *model.RowChang
 
 	if len(value.Delete) != 0 {
 		preCols := codecColumns2RowChangeColumns(value.Delete)
-		e.TableInfo = model.BuildTableInfo4Test(key.Schema, key.Table, preCols, nil)
+		e.TableInfo = model.BuildTableInfo(key.Schema, key.Table, preCols, nil)
 		e.PreColumns = model.Columns2ColumnDatas(preCols, e.TableInfo)
 	} else {
 		cols := codecColumns2RowChangeColumns(value.Update)
 		preCols := codecColumns2RowChangeColumns(value.PreColumns)
-		e.TableInfo = model.BuildTableInfo4Test(key.Schema, key.Table, cols, nil)
+		e.TableInfo = model.BuildTableInfo(key.Schema, key.Table, cols, nil)
 		e.Columns = model.Columns2ColumnDatas(cols, e.TableInfo)
 		e.PreColumns = model.Columns2ColumnDatas(preCols, e.TableInfo)
 	}

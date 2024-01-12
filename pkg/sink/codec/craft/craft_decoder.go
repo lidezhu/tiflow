@@ -77,7 +77,7 @@ func (b *batchDecoder) NextRowChangedEvent() (*model.RowChangedEvent, error) {
 		}
 	}
 	ev.CommitTs = b.headers.GetTs(b.index)
-	ev.TableInfo = model.BuildTableInfo4Test(b.headers.GetSchema(b.index), b.headers.GetTable(b.index), cols, nil)
+	ev.TableInfo = model.BuildTableInfo(b.headers.GetSchema(b.index), b.headers.GetTable(b.index), cols, nil)
 	if len(preCols) > 0 {
 		ev.PreColumns = model.Columns2ColumnDatas(preCols, ev.TableInfo)
 	}

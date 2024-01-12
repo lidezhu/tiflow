@@ -167,7 +167,7 @@ func canalJSONMessage2RowChange(msg canalJSONMessageInterface) (*model.RowChange
 	if msg.eventType() == canal.EventType_DELETE {
 		// for `DELETE` event, `data` contain the old data, set it as the `PreColumns`
 		preCols, err := canalJSONColumnMap2RowChangeColumns(msg.getData(), mysqlType)
-		result.TableInfo = model.BuildTableInfo4Test(*msg.getSchema(), *msg.getTable(), preCols, nil)
+		result.TableInfo = model.BuildTableInfo(*msg.getSchema(), *msg.getTable(), preCols, nil)
 		result.PreColumns = model.Columns2ColumnDatas(preCols, result.TableInfo)
 		// canal-json encoder does not encode `Flag` information into the result,
 		// we have to set the `Flag` to make it can be handled by MySQL Sink.
@@ -178,7 +178,7 @@ func canalJSONMessage2RowChange(msg canalJSONMessageInterface) (*model.RowChange
 
 	// for `INSERT` and `UPDATE`, `data` contain fresh data, set it as the `Columns`
 	cols, err := canalJSONColumnMap2RowChangeColumns(msg.getData(), mysqlType)
-	result.TableInfo = model.BuildTableInfo4Test(*msg.getSchema(), *msg.getTable(), cols, nil)
+	result.TableInfo = model.BuildTableInfo(*msg.getSchema(), *msg.getTable(), cols, nil)
 	result.Columns = model.Columns2ColumnDatas(cols, result.TableInfo)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func canalJSONMessage2RowChange(msg canalJSONMessageInterface) (*model.RowChange
 	// for `UPDATE`, `old` contain old data, set it as the `PreColumns`
 	if msg.eventType() == canal.EventType_UPDATE {
 		preCols, err := canalJSONColumnMap2RowChangeColumns(msg.getOld(), mysqlType)
-		result.TableInfo = model.BuildTableInfo4Test(*msg.getSchema(), *msg.getTable(), cols, nil)
+		result.TableInfo = model.BuildTableInfo(*msg.getSchema(), *msg.getTable(), cols, nil)
 		result.PreColumns = model.Columns2ColumnDatas(preCols, result.TableInfo)
 		if err != nil {
 			return nil, err
