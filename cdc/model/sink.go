@@ -614,7 +614,7 @@ type RedoColumn struct {
 }
 
 func BuildTableInfo(schemaName, tableName string, columns []*Column, indexColumns [][]int) *TableInfo {
-	tidbTableInfo := BuildTiDBTableInfo(tableName, columns, [][]int{})
+	tidbTableInfo := BuildTiDBTableInfo(tableName, columns, indexColumns)
 	return WrapTableInfo(100 /* not used */, schemaName, 1000 /* not used */, tidbTableInfo)
 }
 
@@ -623,7 +623,7 @@ func BuildTiDBTableInfo(tableName string, columns []*Column, indexColumns [][]in
 	ret := &model.TableInfo{}
 	ret.Name = model.NewCIStr(tableName)
 
-	nextColID := int64(200)
+	nextMockColID := int64(200) // 200 is an arbitrary number
 	for i, col := range columns {
 		columnInfo := &model.ColumnInfo{
 			Offset: i,
@@ -643,8 +643,8 @@ func BuildTiDBTableInfo(tableName string, columns []*Column, indexColumns [][]in
 			continue
 		}
 		// FIXME: fix special column id
-		columnInfo.ID = nextColID
-		nextColID += 1
+		columnInfo.ID = nextMockColID
+		nextMockColID += 1
 		columnInfo.Name = model.NewCIStr(col.Name)
 		columnInfo.SetType(col.Type)
 		// TiKV always use utf8mb4 to store, and collation is not recorded by CDC

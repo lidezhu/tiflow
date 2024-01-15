@@ -35,7 +35,7 @@ import (
 
 // testEventSize is the size of a test event.
 // It is used to calculate the memory quota.
-const testEventSize = 226
+const testEventSize = 120
 
 //nolint:unparam
 func genPolymorphicEventWithNilRow(startTs,
@@ -77,21 +77,19 @@ func genPolymorphicEvent(startTs, commitTs uint64, span tablepb.Span) *model.Pol
 }
 
 func genRowChangedEvent(startTs, commitTs uint64, span tablepb.Span) *model.RowChangedEvent {
+	columns := []*model.Column{
+		{Name: "a", Value: 2},
+	}
+	preColumns := []*model.Column{
+		{Name: "a", Value: 1},
+	}
+	tableInfo := model.BuildTableInfo("table", "table", columns, nil)
 	return &model.RowChangedEvent{
-		StartTs:  startTs,
-		CommitTs: commitTs,
-		Table: &model.TableName{
-			Schema:      "table",
-			Table:       "table",
-			TableID:     span.TableID,
-			IsPartition: false,
-		},
-		Columns: []*model.Column{
-			{Name: "a", Value: 2},
-		},
-		PreColumns: []*model.Column{
-			{Name: "a", Value: 1},
-		},
+		StartTs:         startTs,
+		CommitTs:        commitTs,
+		PhysicalTableID: span.TableID,
+		Columns:         model.Columns2ColumnDatas(columns, tableInfo),
+		PreColumns:      model.Columns2ColumnDatas(preColumns, tableInfo),
 	}
 }
 

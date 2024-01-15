@@ -45,10 +45,7 @@ func TestMountedEventIter(t *testing.T) {
 					Key:   []byte("testbytes"),
 					Value: []byte("testbytes"),
 				},
-				Row: &model.RowChangedEvent{
-					Table:        &model.TableName{Schema: "schema", Table: "table"},
-					IndexColumns: [][]int{{1}},
-				},
+				Row: &model.RowChangedEvent{},
 			}
 		},
 	}
