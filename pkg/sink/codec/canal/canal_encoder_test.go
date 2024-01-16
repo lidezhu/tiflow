@@ -28,30 +28,35 @@ import (
 )
 
 var (
+	tableInfo = model.BuildTableInfo("test", "t", []*model.Column{{
+		Name: "col1",
+		Type: mysql.TypeVarchar,
+	}}, nil)
 	rowCases = [][]*model.RowChangedEvent{
 		{{
-			CommitTs: 1,
-			Table:    &model.TableName{Schema: "test", Table: "t"},
-			Columns: []*model.Column{{
+			CommitTs:  1,
+			TableInfo: tableInfo,
+			Columns: model.Columns2ColumnDatas([]*model.Column{{
 				Name:  "col1",
-				Type:  mysql.TypeVarchar,
 				Value: []byte("aa"),
-			}},
+			}}, tableInfo),
 		}},
 		{
 			{
-				CommitTs: 1,
-				Table:    &model.TableName{Schema: "test", Table: "t"},
-				Columns: []*model.Column{{
+				CommitTs:  1,
+				TableInfo: tableInfo,
+				Columns: model.Columns2ColumnDatas([]*model.Column{{
 					Name:  "col1",
-					Type:  mysql.TypeVarchar,
 					Value: []byte("aa"),
-				}},
+				}}, tableInfo),
 			},
 			{
-				CommitTs: 2,
-				Table:    &model.TableName{Schema: "test", Table: "t"},
-				Columns:  []*model.Column{{Name: "col1", Type: 1, Value: "bb"}},
+				CommitTs:  2,
+				TableInfo: tableInfo,
+				Columns: model.Columns2ColumnDatas([]*model.Column{{
+					Name:  "col1",
+					Value: []byte("bb"),
+				}}, tableInfo),
 			},
 		},
 	}
@@ -103,9 +108,7 @@ func TestCanalBatchEncoder(t *testing.T) {
 	for _, cs := range rowCases {
 		encoder := newBatchEncoder(common.NewConfig(config.ProtocolCanal))
 		for _, row := range cs {
-			_, _, colInfo := tableInfo.GetRowColInfos()
 			row.TableInfo = tableInfo
-			row.ColInfos = colInfo
 			err := encoder.AppendRowChangedEvent(context.Background(), "", row, nil)
 			require.NoError(t, err)
 		}
@@ -158,17 +161,14 @@ func TestCanalAppendRowChangedEventWithCallback(t *testing.T) {
 	job := helper.DDL2Job(sql)
 	tableInfo := model.WrapTableInfo(0, "test", 1, job.BinlogInfo.TableInfo)
 
-	_, _, colInfo := tableInfo.GetRowColInfos()
 	row := &model.RowChangedEvent{
-		CommitTs: 1,
-		Table:    &model.TableName{Schema: "a", Table: "b"},
-		Columns: []*model.Column{{
+		CommitTs:  1,
+		TableInfo: tableInfo,
+		Columns: model.Columns2ColumnDatas([]*model.Column{{
 			Name:  "col1",
 			Type:  mysql.TypeVarchar,
 			Value: []byte("aa"),
-		}},
-		TableInfo: tableInfo,
-		ColInfos:  colInfo,
+		}}, tableInfo),
 	}
 
 	encoder := newBatchEncoder(common.NewConfig(config.ProtocolCanal))

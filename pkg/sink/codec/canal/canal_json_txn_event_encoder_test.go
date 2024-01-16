@@ -42,22 +42,17 @@ func TestCanalJSONTxnEventEncoderMaxMessageBytes(t *testing.T) {
 	job := helper.DDL2Job(sql)
 	tableInfo := model.WrapTableInfo(0, "test", 1, job.BinlogInfo.TableInfo)
 
-	_, _, colInfos := tableInfo.GetRowColInfos()
-
 	// the size of `testEvent` after being encoded by canal-json is 200
 	testEvent := &model.SingleTableTxn{
-		Table: &model.TableName{Schema: "test", Table: "t"},
 		Rows: []*model.RowChangedEvent{
 			{
 				CommitTs:  1,
-				Table:     &model.TableName{Schema: "test", Table: "t"},
 				TableInfo: tableInfo,
-				Columns: []*model.Column{{
+				Columns: model.Columns2ColumnDatas([]*model.Column{{
 					Name:  "col1",
 					Type:  mysql.TypeVarchar,
 					Value: []byte("aa"),
-				}},
-				ColInfos: colInfos,
+				}}, tableInfo),
 			},
 		},
 	}
@@ -84,8 +79,6 @@ func TestCanalJSONAppendTxnEventEncoderWithCallback(t *testing.T) {
 	job := helper.DDL2Job(sql)
 	tableInfo := model.WrapTableInfo(0, "test", 1, job.BinlogInfo.TableInfo)
 
-	_, _, colInfos := tableInfo.GetRowColInfos()
-
 	cfg := common.NewConfig(config.ProtocolCanalJSON)
 	encoder := NewJSONTxnEventEncoderBuilder(cfg).Build()
 	require.NotNil(t, encoder)
@@ -93,29 +86,24 @@ func TestCanalJSONAppendTxnEventEncoderWithCallback(t *testing.T) {
 	count := 0
 
 	txn := &model.SingleTableTxn{
-		Table: &model.TableName{Schema: "test", Table: "t"},
 		Rows: []*model.RowChangedEvent{
 			{
 				CommitTs:  1,
-				Table:     &model.TableName{Schema: "test", Table: "t"},
 				TableInfo: tableInfo,
-				Columns: []*model.Column{{
+				Columns: model.Columns2ColumnDatas([]*model.Column{{
 					Name:  "a",
 					Type:  mysql.TypeVarchar,
 					Value: []byte("aa"),
-				}},
-				ColInfos: colInfos,
+				}}, tableInfo),
 			},
 			{
 				CommitTs:  2,
-				Table:     &model.TableName{Schema: "test", Table: "t"},
 				TableInfo: tableInfo,
-				Columns: []*model.Column{{
+				Columns: model.Columns2ColumnDatas([]*model.Column{{
 					Name:  "a",
 					Type:  mysql.TypeVarchar,
 					Value: []byte("bb"),
-				}},
-				ColInfos: colInfos,
+				}}, tableInfo),
 			},
 		},
 	}

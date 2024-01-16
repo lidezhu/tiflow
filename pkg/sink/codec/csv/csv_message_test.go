@@ -954,19 +954,15 @@ func TestRowChangeEventConversion(t *testing.T) {
 			cols = append(cols, &c.col)
 			colInfos = append(colInfos, c.colInfo)
 		}
-		row.ColInfos = colInfos
-		row.Table = &model.TableName{
-			Table:  fmt.Sprintf("table%d", idx),
-			Schema: "test",
-		}
+		row.TableInfo = model.BuildTableInfo(fmt.Sprintf("table%d", idx), "test", cols, nil)
 
 		if idx%3 == 0 { // delete operation
-			row.PreColumns = cols
+			row.PreColumns = model.Columns2ColumnDatas(cols, row.TableInfo)
 		} else if idx%3 == 1 { // insert operation
-			row.Columns = cols
+			row.Columns = model.Columns2ColumnDatas(cols, row.TableInfo)
 		} else { // update operation
-			row.PreColumns = cols
-			row.Columns = cols
+			row.PreColumns = model.Columns2ColumnDatas(cols, row.TableInfo)
+			row.Columns = model.Columns2ColumnDatas(cols, row.TableInfo)
 		}
 		csvMsg, err := rowChangedEvent2CSVMsg(&common.Config{
 			Delimiter:            "\t",

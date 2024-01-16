@@ -31,14 +31,19 @@ func TestCraftMaxMessageBytes(t *testing.T) {
 	cfg := common.NewConfig(config.ProtocolCraft).WithMaxMessageBytes(256)
 	encoder := NewBatchEncoderBuilder(cfg).Build()
 
+	tableInfo := model.BuildTableInfo("a", "b", []*model.Column{{
+		Name:  "col1",
+		Type:  mysql.TypeVarchar,
+		Value: []byte("aa"),
+	}}, nil)
 	testEvent := &model.RowChangedEvent{
-		CommitTs: 1,
-		Table:    &model.TableName{Schema: "a", Table: "b"},
-		Columns: []*model.Column{{
+		CommitTs:  1,
+		TableInfo: tableInfo,
+		Columns: model.Columns2ColumnDatas([]*model.Column{{
 			Name:  "col1",
 			Type:  mysql.TypeVarchar,
 			Value: []byte("aa"),
-		}},
+		}}, tableInfo),
 	}
 
 	for i := 0; i < 10000; i++ {
@@ -58,14 +63,19 @@ func TestCraftMaxBatchSize(t *testing.T) {
 	cfg.MaxBatchSize = 64
 	encoder := NewBatchEncoderBuilder(cfg).Build()
 
+	tableInfo := model.BuildTableInfo("a", "b", []*model.Column{{
+		Name:  "col1",
+		Type:  mysql.TypeVarchar,
+		Value: []byte("aa"),
+	}}, nil)
 	testEvent := &model.RowChangedEvent{
-		CommitTs: 1,
-		Table:    &model.TableName{Schema: "a", Table: "b"},
-		Columns: []*model.Column{{
+		CommitTs:  1,
+		TableInfo: tableInfo,
+		Columns: model.Columns2ColumnDatas([]*model.Column{{
 			Name:  "col1",
 			Type:  mysql.TypeVarchar,
 			Value: []byte("aa"),
-		}},
+		}}, tableInfo),
 	}
 
 	for i := 0; i < 10000; i++ {
@@ -218,14 +228,19 @@ func TestCraftAppendRowChangedEventWithCallback(t *testing.T) {
 
 	count := 0
 
+	tableInfo := model.BuildTableInfo("a", "b", []*model.Column{{
+		Name:  "col1",
+		Type:  mysql.TypeVarchar,
+		Value: []byte("aa"),
+	}}, nil)
 	row := &model.RowChangedEvent{
-		CommitTs: 1,
-		Table:    &model.TableName{Schema: "a", Table: "b"},
-		Columns: []*model.Column{{
+		CommitTs:  1,
+		TableInfo: tableInfo,
+		Columns: model.Columns2ColumnDatas([]*model.Column{{
 			Name:  "col1",
 			Type:  mysql.TypeVarchar,
 			Value: []byte("aa"),
-		}},
+		}}, tableInfo),
 	}
 
 	tests := []struct {

@@ -16,7 +16,6 @@ package partition
 import (
 	"testing"
 
-	timodel "github.com/pingcap/tidb/pkg/parser/model"
 	"github.com/pingcap/tiflow/cdc/model"
 	"github.com/pingcap/tiflow/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -25,49 +24,48 @@ import (
 func TestColumnsDispatcher(t *testing.T) {
 	t.Parallel()
 
+	cols := []*model.Column{
+		{
+			Name:  "col1",
+			Value: 11,
+		},
+		{
+			Name:  "col2",
+			Value: 22,
+		},
+		{
+			Name:  "col3",
+			Value: 33,
+		},
+	}
+	tableInfo := model.BuildTableInfo("test", "t1", cols, nil)
 	event := &model.RowChangedEvent{
-		Table: &model.TableName{
-			Schema: "test",
-			Table:  "t1",
-		},
-		TableInfo: &model.TableInfo{
-			TableInfo: &timodel.TableInfo{
-				Columns: []*timodel.ColumnInfo{
-					{
-						Name: timodel.CIStr{
-							O: "col2",
-						},
-						Offset: 1,
-					},
-					{
-						Name: timodel.CIStr{
-							O: "col1",
-						},
-						Offset: 0,
-					},
-					{
-						Name: timodel.CIStr{
-							O: "col3",
-						},
-						Offset: 2,
-					},
-				},
-			},
-		},
-		Columns: []*model.Column{
-			{
-				Name:  "col1",
-				Value: 11,
-			},
-			{
-				Name:  "col2",
-				Value: 22,
-			},
-			{
-				Name:  "col3",
-				Value: 33,
-			},
-		},
+		TableInfo: tableInfo,
+		// TableInfo: &model.TableInfo{
+		// 	TableInfo: &timodel.TableInfo{
+		// 		Columns: []*timodel.ColumnInfo{
+		// 			{
+		// 				Name: timodel.CIStr{
+		// 					O: "col2",
+		// 				},
+		// 				Offset: 1,
+		// 			},
+		// 			{
+		// 				Name: timodel.CIStr{
+		// 					O: "col1",
+		// 				},
+		// 				Offset: 0,
+		// 			},
+		// 			{
+		// 				Name: timodel.CIStr{
+		// 					O: "col3",
+		// 				},
+		// 				Offset: 2,
+		// 			},
+		// 		},
+		// 	},
+		// },
+		Columns: model.Columns2ColumnDatas(cols, tableInfo),
 	}
 
 	p := NewColumnsDispatcher([]string{"col-2", "col-not-found"})

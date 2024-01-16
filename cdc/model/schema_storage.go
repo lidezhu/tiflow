@@ -326,7 +326,7 @@ func (ti *TableInfo) GetSchemaAndTableString() string {
 }
 
 func (ti *TableInfo) IsPartitionTable() bool {
-	return ti.GetPartitionInfo() != nil
+	return ti.TableInfo != nil && ti.GetPartitionInfo() != nil
 }
 
 func (ti *TableInfo) SetPartition4Test() {

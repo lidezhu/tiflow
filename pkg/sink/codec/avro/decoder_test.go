@@ -20,6 +20,7 @@ import (
 	"time"
 
 	timodel "github.com/pingcap/tidb/pkg/parser/model"
+	"github.com/pingcap/tidb/pkg/util/rowcodec"
 	"github.com/pingcap/tiflow/cdc/model"
 	"github.com/pingcap/tiflow/pkg/sink/codec/common"
 	"github.com/pingcap/tiflow/pkg/util"
@@ -43,9 +44,15 @@ func TestDecodeEvent(t *testing.T) {
 	require.NotNil(t, encoder)
 
 	event := newLargeEvent()
+	columns := make([]*model.Column, 0)
+	colInfos := make([]rowcodec.ColInfo, 0)
+	for _, colData := range event.Columns {
+		columns = append(columns, model.ColumnData2Column(colData, event.TableInfo))
+		colInfos = append(colInfos, event.TableInfo.ForceGetExtraColumnInfo(colData.ColumnID))
+	}
 	input := &avroEncodeInput{
-		columns:  event.Columns,
-		colInfos: event.ColInfos,
+		columns,
+		colInfos,
 	}
 
 	rand.New(rand.NewSource(time.Now().Unix())).Shuffle(len(input.columns), func(i, j int) {

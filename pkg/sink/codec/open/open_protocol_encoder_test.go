@@ -40,61 +40,124 @@ func TestBuildOpenProtocolBatchEncoder(t *testing.T) {
 }
 
 var (
+	tableInfo = model.BuildTableInfo("a", "b", []*model.Column{
+		{
+			Name: "col1",
+			Type: mysql.TypeVarchar,
+			Flag: model.HandleKeyFlag | model.PrimaryKeyFlag,
+		},
+		{
+			Name: "col2",
+			Type: mysql.TypeVarchar,
+		},
+	}, [][]int{{0}})
 	testEvent = &model.RowChangedEvent{
-		CommitTs: 1,
-		Table:    &model.TableName{Schema: "a", Table: "b"},
-		Columns: []*model.Column{
+		CommitTs:  1,
+		TableInfo: tableInfo,
+		Columns: model.Columns2ColumnDatas([]*model.Column{
 			{
 				Name:  "col1",
-				Type:  mysql.TypeVarchar,
 				Value: []byte("aa"),
-				Flag:  model.HandleKeyFlag | model.PrimaryKeyFlag,
 			},
 			{
 				Name:  "col2",
-				Type:  mysql.TypeVarchar,
 				Value: []byte("bb"),
 			},
-		},
+		}, tableInfo),
 	}
+	tableInfoWithManyCols = model.BuildTableInfo("a", "b", []*model.Column{
+		{
+			Name: "col1",
+			Type: mysql.TypeVarchar,
+			Flag: model.HandleKeyFlag,
+		},
+		{
+			Name: "col2",
+			Type: mysql.TypeVarchar,
+		},
+		{
+			Name: "col3",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col4",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col5",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col6",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col7",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col8",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col9",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col10",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col11",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col12",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col13",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col14",
+			Type: mysql.TypeBlob,
+		},
+		{
+			Name: "col15",
+			Type: mysql.TypeBlob,
+		},
+	}, [][]int{{0}})
 	largeTestEvent = &model.RowChangedEvent{
-		CommitTs: 1,
-		Table:    &model.TableName{Schema: "a", Table: "b"},
-		Columns: []*model.Column{
+		CommitTs:  1,
+		TableInfo: tableInfoWithManyCols,
+		Columns: model.Columns2ColumnDatas([]*model.Column{
 			{
 				Name:  "col1",
-				Type:  mysql.TypeVarchar,
 				Value: []byte("12345678910"),
-				Flag:  model.HandleKeyFlag,
 			},
 			{
 				Name:  "col2",
-				Type:  mysql.TypeVarchar,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col3",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col4",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col5",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col6",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col7",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
@@ -104,40 +167,33 @@ var (
 			},
 			{
 				Name:  "col9",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col10",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col11",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col12",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col13",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col14",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
 			{
 				Name:  "col15",
-				Type:  mysql.TypeBlob,
 				Value: []byte("12345678910"),
 			},
-		},
+		}, tableInfo),
 	}
 
 	testCaseDDL = &model.DDLEvent{
@@ -346,13 +402,14 @@ func TestEncodeDecodeE2E(t *testing.T) {
 	decoded, err := decoder.NextRowChangedEvent()
 	require.NoError(t, err)
 
-	obtainedColumns := make(map[string]*model.Column)
+	obtainedColumns := make(map[int64]*model.ColumnData)
 	for _, col := range decoded.Columns {
-		obtainedColumns[col.Name] = col
+		obtainedColumns[col.ColumnID] = col
 	}
 
 	for _, col := range testEvent.Columns {
-		require.Contains(t, obtainedColumns, col.Name)
+		colName := testEvent.TableInfo.ForceGetColumnName(col.ColumnID)
+		require.Contains(t, obtainedColumns, colName)
 	}
 }
 
@@ -443,15 +500,16 @@ func TestE2EHandleKeyOnlyEvent(t *testing.T) {
 	nextEvent := decoder.(*BatchDecoder).nextEvent
 	require.NotNil(t, nextEvent)
 
-	obtainedColumns := make(map[string]*model.Column)
+	obtainedColumns := make(map[int64]*model.ColumnData)
 	for _, col := range nextEvent.Columns {
-		obtainedColumns[col.Name] = col
-		require.True(t, col.Flag.IsHandleKey())
+		obtainedColumns[col.ColumnID] = col
+		require.True(t, nextEvent.TableInfo.ForceGetColumnFlagType(col.ColumnID).IsHandleKey())
 	}
 
 	for _, col := range largeTestEvent.Columns {
-		if col.Flag.IsHandleKey() {
-			require.Contains(t, obtainedColumns, col.Name)
+		colName := nextEvent.TableInfo.ForceGetColumnName(col.ColumnID)
+		if nextEvent.TableInfo.ForceGetColumnFlagType(col.ColumnID).IsHandleKey() {
+			require.Contains(t, obtainedColumns, colName)
 		}
 	}
 }
@@ -497,17 +555,16 @@ func TestE2EClaimCheckMessage(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, largeTestEvent.CommitTs, decodedLargeEvent.CommitTs)
-	require.Equal(t, largeTestEvent.Table, decodedLargeEvent.Table)
+	require.Equal(t, largeTestEvent.TableInfo.TableName, decodedLargeEvent.TableInfo.TableName)
 
-	decodedColumns := make(map[string]*model.Column, len(decodedLargeEvent.Columns))
+	decodedColumns := make(map[int64]*model.ColumnData, len(decodedLargeEvent.Columns))
 	for _, column := range decodedLargeEvent.Columns {
-		decodedColumns[column.Name] = column
+		decodedColumns[column.ColumnID] = column
 	}
 
 	for _, column := range largeTestEvent.Columns {
-		decodedColumn, ok := decodedColumns[column.Name]
+		decodedColumn, ok := decodedColumns[column.ColumnID]
 		require.True(t, ok)
-		require.Equal(t, column.Type, decodedColumn.Type)
 		require.Equal(t, column.Value, decodedColumn.Value)
 	}
 }

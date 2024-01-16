@@ -25,33 +25,42 @@ import (
 func TestIndexValueDispatcher(t *testing.T) {
 	t.Parallel()
 
+	cols1 := []*model.Column{
+		{
+			Name:  "a",
+			Value: 11,
+			Flag:  model.HandleKeyFlag | model.PrimaryKeyFlag,
+		}, {
+			Name:  "b",
+			Value: 22,
+			Flag:  0,
+		},
+	}
+	tableInfo1 := model.BuildTableInfo("test", "t1", cols1, [][]int{{0}})
+
+	cols2 := []*model.Column{
+		{
+			Name:  "a",
+			Value: 11,
+			Flag:  model.HandleKeyFlag | model.PrimaryKeyFlag,
+		}, {
+			Name:  "b",
+			Value: 22,
+			Flag:  model.HandleKeyFlag | model.PrimaryKeyFlag,
+		},
+	}
+	tableInfo2 := model.BuildTableInfo("test", "t2", cols2, [][]int{{0, 1}})
 	testCases := []struct {
 		row             *model.RowChangedEvent
 		expectPartition int32
 	}{
 		{row: &model.RowChangedEvent{
-			Table: &model.TableName{
-				Schema: "test",
-				Table:  "t1",
-			},
-			Columns: []*model.Column{
-				{
-					Name:  "a",
-					Value: 11,
-					Flag:  model.HandleKeyFlag,
-				}, {
-					Name:  "b",
-					Value: 22,
-					Flag:  0,
-				},
-			},
+			TableInfo: tableInfo1,
+			Columns:   model.Columns2ColumnDatas(cols1, tableInfo1),
 		}, expectPartition: 2},
 		{row: &model.RowChangedEvent{
-			Table: &model.TableName{
-				Schema: "test",
-				Table:  "t1",
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfo1,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 22,
@@ -61,14 +70,11 @@ func TestIndexValueDispatcher(t *testing.T) {
 					Value: 22,
 					Flag:  0,
 				},
-			},
+			}, tableInfo1),
 		}, expectPartition: 11},
 		{row: &model.RowChangedEvent{
-			Table: &model.TableName{
-				Schema: "test",
-				Table:  "t1",
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfo1,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 11,
@@ -78,31 +84,15 @@ func TestIndexValueDispatcher(t *testing.T) {
 					Value: 33,
 					Flag:  0,
 				},
-			},
+			}, tableInfo1),
 		}, expectPartition: 2},
 		{row: &model.RowChangedEvent{
-			Table: &model.TableName{
-				Schema: "test",
-				Table:  "t2",
-			},
-			Columns: []*model.Column{
-				{
-					Name:  "a",
-					Value: 11,
-					Flag:  model.HandleKeyFlag,
-				}, {
-					Name:  "b",
-					Value: 22,
-					Flag:  model.HandleKeyFlag,
-				},
-			},
+			TableInfo: tableInfo2,
+			Columns:   model.Columns2ColumnDatas(cols2, tableInfo2),
 		}, expectPartition: 5},
 		{row: &model.RowChangedEvent{
-			Table: &model.TableName{
-				Schema: "test",
-				Table:  "t2",
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfo2,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "b",
 					Value: 22,
@@ -112,14 +102,11 @@ func TestIndexValueDispatcher(t *testing.T) {
 					Value: 11,
 					Flag:  model.HandleKeyFlag,
 				},
-			},
+			}, tableInfo2),
 		}, expectPartition: 5},
 		{row: &model.RowChangedEvent{
-			Table: &model.TableName{
-				Schema: "test",
-				Table:  "t2",
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfo2,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 11,
@@ -129,14 +116,11 @@ func TestIndexValueDispatcher(t *testing.T) {
 					Value: 0,
 					Flag:  model.HandleKeyFlag,
 				},
-			},
+			}, tableInfo2),
 		}, expectPartition: 14},
 		{row: &model.RowChangedEvent{
-			Table: &model.TableName{
-				Schema: "test",
-				Table:  "t2",
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfo2,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 11,
@@ -146,7 +130,7 @@ func TestIndexValueDispatcher(t *testing.T) {
 					Value: 33,
 					Flag:  model.HandleKeyFlag,
 				},
-			},
+			}, tableInfo2),
 		}, expectPartition: 2},
 	}
 	p := NewIndexValueDispatcher("")
@@ -160,33 +144,28 @@ func TestIndexValueDispatcher(t *testing.T) {
 func TestIndexValueDispatcherWithIndexName(t *testing.T) {
 	t.Parallel()
 
-	event := &model.RowChangedEvent{
-		Table: &model.TableName{
-			Schema: "test",
-			Table:  "t1",
+	cols := []*model.Column{
+		{
+			Name:  "a",
+			Value: 11,
 		},
-		TableInfo: &model.TableInfo{
-			TableInfo: &timodel.TableInfo{
-				Indices: []*timodel.IndexInfo{
-					{
-						Name: timodel.CIStr{
-							O: "index1",
-						},
-						Columns: []*timodel.IndexColumn{
-							{
-								Name: timodel.CIStr{
-									O: "a",
-								},
-							},
-						},
+	}
+	tableInfo := model.BuildTableInfo("test", "t1", cols, [][]int{{0}})
+	event := &model.RowChangedEvent{
+		TableInfo: tableInfo,
+		Columns:   model.Columns2ColumnDatas(cols, tableInfo),
+	}
+	tableInfo.TableInfo.Indices = []*timodel.IndexInfo{
+		{
+			Name: timodel.CIStr{
+				O: "index1",
+			},
+			Columns: []*timodel.IndexColumn{
+				{
+					Name: timodel.CIStr{
+						O: "a",
 					},
 				},
-			},
-		},
-		Columns: []*model.Column{
-			{
-				Name:  "a",
-				Value: 11,
 			},
 		},
 	}
