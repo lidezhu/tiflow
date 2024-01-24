@@ -140,18 +140,15 @@ func (d *decoder) NextRowChangedEvent() (*model.RowChangedEvent, error) {
 			zap.String("topic", d.topic), zap.Uint64("checksum", expectedChecksum))
 		for _, col := range event.Columns {
 			log.Info("data corrupted, print each column for debugging",
-				zap.String("name", col.Name),
-				zap.Any("type", col.Type),
-				zap.Any("charset", col.Charset),
-				zap.Any("flag", col.Flag),
-				zap.Any("value", col.Value),
-				zap.Any("default", col.Default))
+				zap.Int64("id", col.ColumnID),
+				zap.Any("value", col.Value))
 		}
-
 	}
 
+	columns := model.ColumnDatas2Columns(event.Columns, event.TableInfo)
+
 	if found {
-		if err := common.VerifyChecksum(event.Columns, uint32(expectedChecksum)); err != nil {
+		if err := common.VerifyChecksum(columns, uint32(expectedChecksum)); err != nil {
 			return nil, errors.Trace(err)
 		}
 	}
@@ -244,17 +241,13 @@ func assembleEvent(keyMap, valueMap, schema map[string]interface{}, isDelete boo
 
 	event := new(model.RowChangedEvent)
 	event.CommitTs = uint64(commitTs)
-	event.TableInfo = &model.TableInfo{
-		TableName: model.TableName{
-			Schema: schemaName,
-			Table:  tableName,
-		},
-	}
+	// FIXME: TableInfo not right
+	event.TableInfo = model.BuildTableInfo(schemaName, tableName, columns, [][]int{})
 
 	if isDelete {
-		event.PreColumns = columns
+		event.PreColumns = model.Columns2ColumnDatas(columns, event.TableInfo)
 	} else {
-		event.Columns = columns
+		event.Columns = model.Columns2ColumnDatas(columns, event.TableInfo)
 	}
 
 	return event, nil

@@ -27,8 +27,6 @@ import (
 	"github.com/pingcap/tidb/pkg/parser/mysql"
 	"github.com/pingcap/tidb/pkg/parser/types"
 	tiTypes "github.com/pingcap/tidb/pkg/types"
-	"github.com/pingcap/tidb/pkg/util/rowcodec"
-	"github.com/pingcap/tiflow/cdc/entry"
 	"github.com/pingcap/tiflow/cdc/model"
 	cerror "github.com/pingcap/tiflow/pkg/errors"
 	"github.com/pingcap/tiflow/pkg/integrity"
@@ -128,7 +126,7 @@ func newColumnSchema(col *timodel.ColumnInfo) (*columnSchema, error) {
 		tp.Decimal = col.GetDecimal()
 	}
 
-	defaultValue := entry.GetColumnDefaultValue(col)
+	defaultValue := model.GetColumnDefaultValue(col)
 	if defaultValue != nil && col.GetType() == mysql.TypeBit {
 		var err error
 		defaultValue, err = common.BinaryLiteralToInt([]byte(defaultValue.(string)))
@@ -389,30 +387,29 @@ func buildRowChangedEvent(
 		TableInfo:       tableInfo,
 	}
 
-	columns, err := decodeColumns(msg.Data, tableInfo.Columns)
+	nameToIDMap := make(map[string]int64, len(tableInfo.Columns))
+	for _, columnInfo := range tableInfo.Columns {
+		nameToIDMap[columnInfo.Name.O] = columnInfo.ID
+	}
+
+	columns, err := decodeColumns(msg.Data, nameToIDMap, tableInfo)
 	if err != nil {
 		return nil, err
 	}
 	result.Columns = columns
 
-	columns, err = decodeColumns(msg.Old, tableInfo.Columns)
+	columns, err = decodeColumns(msg.Old, nameToIDMap, tableInfo)
 	if err != nil {
 		return nil, err
 	}
 	result.PreColumns = columns
 
-	primaryKeySet := make(map[string]struct{})
-	for _, name := range tableInfo.GetPrimaryKeyColumnNames() {
-		primaryKeySet[name] = struct{}{}
-	}
-	result.WithHandlePrimaryFlag(primaryKeySet)
-
 	if enableRowChecksum && msg.Checksum != nil {
-		err = common.VerifyChecksum(result.PreColumns, msg.Checksum.Previous)
+		err = common.VerifyChecksum(model.ColumnDatas2Columns(result.PreColumns, tableInfo), msg.Checksum.Previous)
 		if err != nil {
 			return nil, cerror.WrapError(cerror.ErrDecodeFailed, err)
 		}
-		err = common.VerifyChecksum(result.Columns, msg.Checksum.Current)
+		err = common.VerifyChecksum(model.ColumnDatas2Columns(result.Columns, tableInfo), msg.Checksum.Current)
 		if err != nil {
 			return nil, cerror.WrapError(cerror.ErrDecodeFailed, err)
 		}
@@ -430,21 +427,13 @@ func buildRowChangedEvent(
 				zap.String("table", msg.Table))
 			for _, col := range result.PreColumns {
 				log.Info("data corrupted, print each previous column for debugging",
-					zap.String("name", col.Name),
-					zap.Any("type", col.Type),
-					zap.Any("charset", col.Charset),
-					zap.Any("flag", col.Flag),
-					zap.Any("value", col.Value),
-					zap.Any("default", col.Default))
+					zap.Int64("columID", col.ColumnID),
+					zap.Any("value", col.Value))
 			}
 			for _, col := range result.Columns {
 				log.Info("data corrupted, print each column for debugging",
-					zap.String("name", col.Name),
-					zap.Any("type", col.Type),
-					zap.Any("charset", col.Charset),
-					zap.Any("flag", col.Flag),
-					zap.Any("value", col.Value),
-					zap.Any("default", col.Default))
+					zap.Int64("columID", col.ColumnID),
+					zap.Any("value", col.Value))
 			}
 		}
 	}
@@ -452,20 +441,19 @@ func buildRowChangedEvent(
 	return result, nil
 }
 
-func decodeColumns(
-	rawData map[string]interface{}, columnInfos []*timodel.ColumnInfo,
-) ([]*model.Column, error) {
+func decodeColumns(rawData map[string]interface{}, nameToIDMap map[string]int64, tableInfo *model.TableInfo) ([]*model.ColumnData, error) {
 	if rawData == nil {
 		return nil, nil
 	}
-	var result []*model.Column
-	for _, info := range columnInfos {
-		value, ok := rawData[info.Name.O]
+	var result []*model.ColumnData
+	for name, value := range rawData {
+		colID, ok := nameToIDMap[name]
 		if !ok {
 			log.Error("cannot found the value for the column",
-				zap.String("column", info.Name.O))
+				zap.String("column", name))
 		}
-		col, err := decodeColumn(info.Name.O, value, &info.FieldType)
+		fieldType := &tableInfo.ForceGetColumnInfo(colID).FieldType
+		col, err := decodeColumn(colID, value, fieldType)
 		if err != nil {
 			return nil, err
 		}
@@ -586,23 +574,23 @@ func newDMLMessage(
 	var err error
 	if event.IsInsert() {
 		m.Type = InsertType
-		m.Data, err = formatColumns(event.Columns, event.ColInfos, onlyHandleKey)
+		m.Data, err = formatColumns(event.Columns, event, onlyHandleKey)
 		if err != nil {
 			return nil, err
 		}
 	} else if event.IsDelete() {
 		m.Type = DeleteType
-		m.Old, err = formatColumns(event.PreColumns, event.ColInfos, onlyHandleKey)
+		m.Old, err = formatColumns(event.PreColumns, event, onlyHandleKey)
 		if err != nil {
 			return nil, err
 		}
 	} else if event.IsUpdate() {
 		m.Type = UpdateType
-		m.Data, err = formatColumns(event.Columns, event.ColInfos, onlyHandleKey)
+		m.Data, err = formatColumns(event.Columns, event, onlyHandleKey)
 		if err != nil {
 			return nil, err
 		}
-		m.Old, err = formatColumns(event.PreColumns, event.ColInfos, onlyHandleKey)
+		m.Old, err = formatColumns(event.PreColumns, event, onlyHandleKey)
 		if err != nil {
 			return nil, err
 		}
@@ -623,21 +611,23 @@ func newDMLMessage(
 }
 
 func formatColumns(
-	columns []*model.Column, columnInfos []rowcodec.ColInfo, onlyHandleKey bool,
+	columns []*model.ColumnData, event *model.RowChangedEvent, onlyHandleKey bool,
 ) (map[string]interface{}, error) {
 	result := make(map[string]interface{}, len(columns))
-	for idx, col := range columns {
+	tableInfo := event.TableInfo
+	for _, col := range columns {
 		if col == nil {
 			continue
 		}
-		if onlyHandleKey && !col.Flag.IsHandleKey() {
+		flag := tableInfo.ForceGetColumnFlagType(col.ColumnID)
+		if onlyHandleKey && !flag.IsHandleKey() {
 			continue
 		}
-		value, err := encodeValue(col.Value, columnInfos[idx].Ft)
+		value, err := encodeValue(col.Value, tableInfo.ForceGetExtraColumnInfo(col.ColumnID).Ft)
 		if err != nil {
 			return nil, err
 		}
-		result[col.Name] = value
+		result[tableInfo.ForceGetColumnName(col.ColumnID)] = value
 	}
 	return result, nil
 }
@@ -773,13 +763,10 @@ func encodeValue(value interface{}, ft *types.FieldType) (interface{}, error) {
 	return result, nil
 }
 
-func decodeColumn(name string, value interface{}, fieldType *types.FieldType) (*model.Column, error) {
-	result := &model.Column{
-		Type:      fieldType.GetType(),
-		Charset:   fieldType.GetCharset(),
-		Collation: fieldType.GetCollate(),
-		Name:      name,
-		Value:     value,
+func decodeColumn(colID int64, value interface{}, fieldType *types.FieldType) (*model.ColumnData, error) {
+	result := &model.ColumnData{
+		ColumnID: colID,
+		Value:    value,
 	}
 	if value == nil {
 		return result, nil
@@ -806,7 +793,7 @@ func decodeColumn(name string, value interface{}, fieldType *types.FieldType) (*
 			value, err = strconv.ParseUint(v, 10, 64)
 			if err != nil {
 				log.Error("invalid column value for bit",
-					zap.String("name", name), zap.Any("data", v),
+					zap.Int64("columID", colID), zap.Any("data", v),
 					zap.Any("type", fieldType.GetType()), zap.Error(err))
 				return nil, cerror.WrapError(cerror.ErrDecodeFailed, err)
 			}

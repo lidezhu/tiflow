@@ -25,7 +25,6 @@ import (
 	timodel "github.com/pingcap/tidb/pkg/parser/model"
 	"github.com/pingcap/tidb/pkg/parser/mysql"
 	"github.com/pingcap/tidb/pkg/parser/types"
-	"github.com/pingcap/tidb/pkg/util/rowcodec"
 	"github.com/pingcap/tiflow/cdc/model"
 	"github.com/pingcap/tiflow/cdc/sink/dmlsink"
 	"github.com/pingcap/tiflow/cdc/sink/tablesink/state"
@@ -91,18 +90,25 @@ func generateTxnEvents(
 			},
 			SinkState: tableStatus,
 		}
+		tableInfo := &model.TableInfo{
+			TableName: model.TableName{Schema: "test", Table: "table1"},
+			Version:   33,
+			TableInfo: &timodel.TableInfo{
+				Columns: []*timodel.ColumnInfo{
+					{ID: 1, Name: timodel.NewCIStr("c1"), FieldType: *types.NewFieldType(mysql.TypeLong)},
+					{ID: 2, Name: timodel.NewCIStr("c2"), FieldType: *types.NewFieldType(mysql.TypeVarchar)},
+				},
+			},
+		}
 		for j := 0; j < batch; j++ {
+			cols := []*model.Column{
+				{Name: "c1", Value: i*batch + j},
+				{Name: "c2", Value: "hello world"},
+			}
 			row := &model.RowChangedEvent{
 				CommitTs:  100,
-				TableInfo: &model.TableInfo{TableName: model.TableName{Schema: "test", Table: "table1"}, Version: 33},
-				Columns: []*model.Column{
-					{Name: "c1", Value: i*batch + j},
-					{Name: "c2", Value: "hello world"},
-				},
-				ColInfos: []rowcodec.ColInfo{
-					{ID: 1, Ft: types.NewFieldType(mysql.TypeLong)},
-					{ID: 2, Ft: types.NewFieldType(mysql.TypeVarchar)},
-				},
+				TableInfo: tableInfo,
+				Columns:   model.Columns2ColumnDatas(cols, tableInfo),
 			}
 			txn.Event.Rows = append(txn.Event.Rows, row)
 		}

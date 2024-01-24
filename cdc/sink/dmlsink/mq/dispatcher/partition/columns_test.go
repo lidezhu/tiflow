@@ -25,6 +25,23 @@ import (
 func TestColumnsDispatcher(t *testing.T) {
 	t.Parallel()
 
+<<<<<<< HEAD
+=======
+	cols := []*model.Column{
+		{
+			Name:  "col1",
+			Value: 11,
+		},
+		{
+			Name:  "col2",
+			Value: 22,
+		},
+		{
+			Name:  "col3",
+			Value: 33,
+		},
+	}
+>>>>>>> a3d5b47db (alpha version)
 	tableInfo := &model.TableInfo{
 		TableName: model.TableName{
 			Schema: "test",
@@ -55,20 +72,7 @@ func TestColumnsDispatcher(t *testing.T) {
 	}
 	event := &model.RowChangedEvent{
 		TableInfo: tableInfo,
-		Columns: []*model.Column{
-			{
-				Name:  "col1",
-				Value: 11,
-			},
-			{
-				Name:  "col2",
-				Value: 22,
-			},
-			{
-				Name:  "col3",
-				Value: 33,
-			},
-		},
+		Columns:   model.Columns2ColumnDatas(cols, tableInfo),
 	}
 
 	p := NewColumnsDispatcher([]string{"col-2", "col-not-found"})

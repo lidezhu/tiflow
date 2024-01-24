@@ -116,13 +116,13 @@ func rowChangeToMsg(
 	value := &messageRow{}
 	if e.IsDelete() {
 		onlyHandleKeyColumns := config.DeleteOnlyHandleKeyColumns || largeMessageOnlyHandleKeyColumns
-		value.Delete = rowChangeColumns2CodecColumns(e.PreColumns, onlyHandleKeyColumns)
+		value.Delete = rowChangeColumns2CodecColumns(model.ColumnDatas2Columns(e.PreColumns, e.TableInfo), onlyHandleKeyColumns)
 		if onlyHandleKeyColumns && len(value.Delete) == 0 {
 			return nil, nil, cerror.ErrOpenProtocolCodecInvalidData.GenWithStack("not found handle key columns for the delete event")
 		}
 	} else if e.IsUpdate() {
-		value.Update = rowChangeColumns2CodecColumns(e.Columns, largeMessageOnlyHandleKeyColumns)
-		value.PreColumns = rowChangeColumns2CodecColumns(e.PreColumns, largeMessageOnlyHandleKeyColumns)
+		value.Update = rowChangeColumns2CodecColumns(model.ColumnDatas2Columns(e.Columns, e.TableInfo), largeMessageOnlyHandleKeyColumns)
+		value.PreColumns = rowChangeColumns2CodecColumns(model.ColumnDatas2Columns(e.PreColumns, e.TableInfo), largeMessageOnlyHandleKeyColumns)
 		if largeMessageOnlyHandleKeyColumns && (len(value.Update) == 0 || len(value.PreColumns) == 0) {
 			return nil, nil, cerror.ErrOpenProtocolCodecInvalidData.GenWithStack("not found handle key columns for the update event")
 		}
@@ -130,7 +130,7 @@ func rowChangeToMsg(
 			value.dropNotUpdatedColumns()
 		}
 	} else {
-		value.Update = rowChangeColumns2CodecColumns(e.Columns, largeMessageOnlyHandleKeyColumns)
+		value.Update = rowChangeColumns2CodecColumns(model.ColumnDatas2Columns(e.Columns, e.TableInfo), largeMessageOnlyHandleKeyColumns)
 		if largeMessageOnlyHandleKeyColumns && len(value.Update) == 0 {
 			return nil, nil, cerror.ErrOpenProtocolCodecInvalidData.GenWithStack("not found handle key columns for the insert event")
 		}
@@ -157,10 +157,15 @@ func msgToRowChange(key *internal.MessageKey, value *messageRow) *model.RowChang
 	}
 
 	if len(value.Delete) != 0 {
-		e.PreColumns = codecColumns2RowChangeColumns(value.Delete)
+		preCols := codecColumns2RowChangeColumns(value.Delete)
+		e.TableInfo = model.BuildTableInfo(key.Schema, key.Table, preCols, nil)
+		e.PreColumns = model.Columns2ColumnDatas(preCols, e.TableInfo)
 	} else {
-		e.Columns = codecColumns2RowChangeColumns(value.Update)
-		e.PreColumns = codecColumns2RowChangeColumns(value.PreColumns)
+		cols := codecColumns2RowChangeColumns(value.Update)
+		preCols := codecColumns2RowChangeColumns(value.PreColumns)
+		e.TableInfo = model.BuildTableInfo(key.Schema, key.Table, cols, nil)
+		e.Columns = model.Columns2ColumnDatas(cols, e.TableInfo)
+		e.PreColumns = model.Columns2ColumnDatas(preCols, e.TableInfo)
 	}
 	return e
 }

@@ -25,7 +25,6 @@ import (
 	timodel "github.com/pingcap/tidb/pkg/parser/model"
 	"github.com/pingcap/tidb/pkg/parser/mysql"
 	"github.com/pingcap/tidb/pkg/types"
-	"github.com/pingcap/tidb/pkg/util/rowcodec"
 	"github.com/pingcap/tiflow/cdc/model"
 	"github.com/pingcap/tiflow/pkg/config"
 	cerror "github.com/pingcap/tiflow/pkg/errors"
@@ -362,7 +361,7 @@ func rowChangedEvent2CSVMsg(csvConfig *common.Config, e *model.RowChangedEvent) 
 	}
 	if e.IsDelete() {
 		csvMsg.opType = operationDelete
-		csvMsg.columns, err = rowChangeColumns2CSVColumns(csvConfig, e.PreColumns, e.ColInfos)
+		csvMsg.columns, err = rowChangeColumns2CSVColumns(csvConfig, e.PreColumns, e)
 		if err != nil {
 			return nil, err
 		}
@@ -370,7 +369,7 @@ func rowChangedEvent2CSVMsg(csvConfig *common.Config, e *model.RowChangedEvent) 
 		if e.PreColumns == nil {
 			// This is a insert operation.
 			csvMsg.opType = operationInsert
-			csvMsg.columns, err = rowChangeColumns2CSVColumns(csvConfig, e.Columns, e.ColInfos)
+			csvMsg.columns, err = rowChangeColumns2CSVColumns(csvConfig, e.Columns, e)
 			if err != nil {
 				return nil, err
 			}
@@ -383,12 +382,12 @@ func rowChangedEvent2CSVMsg(csvConfig *common.Config, e *model.RowChangedEvent) 
 						fmt.Errorf("the column length of preColumns %d doesn't equal to that of columns %d",
 							len(e.PreColumns), len(e.Columns)))
 				}
-				csvMsg.preColumns, err = rowChangeColumns2CSVColumns(csvConfig, e.PreColumns, e.ColInfos)
+				csvMsg.preColumns, err = rowChangeColumns2CSVColumns(csvConfig, e.PreColumns, e)
 				if err != nil {
 					return nil, err
 				}
 			}
-			csvMsg.columns, err = rowChangeColumns2CSVColumns(csvConfig, e.Columns, e.ColInfos)
+			csvMsg.columns, err = rowChangeColumns2CSVColumns(csvConfig, e.Columns, e)
 			if err != nil {
 				return nil, err
 			}
@@ -426,16 +425,16 @@ func csvMsg2RowChangedEvent(csvConfig *common.Config, csvMsg *csvMessage, ticols
 	return e, nil
 }
 
-func rowChangeColumns2CSVColumns(csvConfig *common.Config, cols []*model.Column, colInfos []rowcodec.ColInfo) ([]any, error) {
+func rowChangeColumns2CSVColumns(csvConfig *common.Config, cols []*model.ColumnData, e *model.RowChangedEvent) ([]any, error) {
 	var csvColumns []any
-	for i, column := range cols {
+	for _, column := range cols {
 		// column could be nil in a condition described in
 		// https://github.com/pingcap/tiflow/issues/6198#issuecomment-1191132951
 		if column == nil {
 			continue
 		}
 
-		converted, err := fromColValToCsvVal(csvConfig, column, colInfos[i].Ft)
+		converted, err := fromColValToCsvVal(csvConfig, model.ColumnData2Column(column, e.TableInfo), e.TableInfo.ForceGetExtraColumnInfo(column.ColumnID).Ft)
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
@@ -445,19 +444,13 @@ func rowChangeColumns2CSVColumns(csvConfig *common.Config, cols []*model.Column,
 	return csvColumns, nil
 }
 
-func csvColumns2RowChangeColumns(csvConfig *common.Config, csvCols []any, ticols []*timodel.ColumnInfo) ([]*model.Column, error) {
-	cols := make([]*model.Column, 0, len(csvCols))
+func csvColumns2RowChangeColumns(csvConfig *common.Config, csvCols []any, ticols []*timodel.ColumnInfo) ([]*model.ColumnData, error) {
+	cols := make([]*model.ColumnData, 0, len(csvCols))
 	for idx, csvCol := range csvCols {
-		col := new(model.Column)
+		col := new(model.ColumnData)
 
 		ticol := ticols[idx]
-		col.Type = ticol.GetType()
-		col.Charset = ticol.GetCharset()
-		col.Name = ticol.Name.O
-		if mysql.HasPriKeyFlag(ticol.GetFlag()) {
-			col.Flag.SetIsHandleKey()
-			col.Flag.SetIsPrimaryKey()
-		}
+		col.ColumnID = ticol.ID
 
 		val, err := fromCsvValToColValue(csvConfig, csvCol, ticol.FieldType)
 		if err != nil {

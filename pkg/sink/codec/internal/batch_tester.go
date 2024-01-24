@@ -25,16 +25,21 @@ import (
 )
 
 var (
-	tableInfo = &model.TableInfo{
-		TableName: model.TableName{
-			Schema: "a", Table: "b",
-		},
-	}
+	tableInfo = model.BuildTableInfo("a", "b", []*model.Column{
+		{Name: "varchar", Type: mysql.TypeVarchar},
+		{Name: "string", Type: mysql.TypeString},
+		{Name: "date", Type: mysql.TypeDate},
+		{Name: "timestamp", Type: mysql.TypeTimestamp},
+		{Name: "datetime", Type: mysql.TypeDatetime},
+		{Name: "float", Type: mysql.TypeFloat},
+		{Name: "long", Type: mysql.TypeLong},
+		{Name: "null", Type: mysql.TypeNull},
+	}, nil)
 	// CodecRowCases defines test cases for RowChangedEvent.
 	CodecRowCases = [][]*model.RowChangedEvent{{{
 		CommitTs:  424316552636792833,
 		TableInfo: tableInfo,
-		PreColumns: []*model.Column{
+		PreColumns: model.Columns2ColumnDatas([]*model.Column{
 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
 			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
@@ -43,8 +48,8 @@ var (
 			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
 			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
-		Columns: []*model.Column{
+		}, tableInfo),
+		Columns: model.Columns2ColumnDatas([]*model.Column{
 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
 			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
@@ -53,11 +58,11 @@ var (
 			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
 			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
+		}, tableInfo),
 	}}, {{
 		CommitTs:  424316553934667777,
 		TableInfo: tableInfo,
-		PreColumns: []*model.Column{
+		PreColumns: model.Columns2ColumnDatas([]*model.Column{
 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
 			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
@@ -66,8 +71,8 @@ var (
 			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
 			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
-		Columns: []*model.Column{
+		}, tableInfo),
+		Columns: model.Columns2ColumnDatas([]*model.Column{
 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
 			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
@@ -76,11 +81,11 @@ var (
 			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
 			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
+		}, tableInfo),
 	}, {
 		CommitTs:  424316554327097345,
 		TableInfo: tableInfo,
-		PreColumns: []*model.Column{
+		PreColumns: model.Columns2ColumnDatas([]*model.Column{
 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
 			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
@@ -89,21 +94,11 @@ var (
 			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
 			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
-		Columns: []*model.Column{
-			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
-			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
-			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
-			{Name: "timestamp", Type: mysql.TypeTimestamp, Value: "2021/01/02 00:00:00"},
-			{Name: "datetime", Type: mysql.TypeDatetime, Value: "2021/01/02 00:00:00"},
-			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
-			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
-			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
+		}, tableInfo),
 	}, {
 		CommitTs:  424316554746789889,
 		TableInfo: tableInfo,
-		PreColumns: []*model.Column{
+		PreColumns: model.Columns2ColumnDatas([]*model.Column{
 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
 			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
@@ -112,8 +107,8 @@ var (
 			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
 			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
-		Columns: []*model.Column{
+		}, tableInfo),
+		Columns: model.Columns2ColumnDatas([]*model.Column{
 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
 			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
@@ -122,11 +117,11 @@ var (
 			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
 			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
+		}, tableInfo),
 	}, {
 		CommitTs:  424316555073945601,
 		TableInfo: tableInfo,
-		PreColumns: []*model.Column{
+		PreColumns: model.Columns2ColumnDatas([]*model.Column{
 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar0")},
 			{Name: "string", Type: mysql.TypeString, Value: []byte("string0")},
 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/01"},
@@ -135,8 +130,8 @@ var (
 			{Name: "float", Type: mysql.TypeFloat, Value: float64(1.0)},
 			{Name: "long", Type: mysql.TypeLong, Value: int64(1000)},
 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
-		Columns: []*model.Column{
+		}, tableInfo),
+		Columns: model.Columns2ColumnDatas([]*model.Column{
 			{Name: "varchar", Type: mysql.TypeVarchar, Value: []byte("varchar1")},
 			{Name: "string", Type: mysql.TypeString, Value: []byte("string1")},
 			{Name: "date", Type: mysql.TypeDate, Value: "2021/01/02"},
@@ -145,8 +140,8 @@ var (
 			{Name: "float", Type: mysql.TypeFloat, Value: float64(2.0)},
 			{Name: "long", Type: mysql.TypeLong, Value: int64(2000)},
 			{Name: "null", Type: mysql.TypeNull, Value: nil},
-		},
-	}}, {}}
+		}, tableInfo),
+	}}}
 
 	// CodecDDLCases defines test cases for DDLEvent.
 	CodecDDLCases = [][]*model.DDLEvent{{{
@@ -175,21 +170,22 @@ var (
 	CodecResolvedTSCases = [][]uint64{{424316592563683329}, {424316594097225729, 424316594214141953, 424316594345213953}, {}}
 )
 
-type columnsArray []*model.Column
+type columnsArray []*model.ColumnData
 
 func (a columnsArray) Len() int {
 	return len(a)
 }
 
 func (a columnsArray) Less(i, j int) bool {
-	return a[i].Name < a[j].Name
+	// return a[i].Name < a[j].Name
+	return a[i].ColumnID < a[j].ColumnID
 }
 
 func (a columnsArray) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
 }
 
-func sortColumnArrays(arrays ...[]*model.Column) {
+func sortColumnArrays(arrays ...[]*model.ColumnData) {
 	for _, array := range arrays {
 		if array != nil {
 			sort.Sort(columnsArray(array))

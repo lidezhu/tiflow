@@ -25,142 +25,111 @@ import (
 func TestIndexValueDispatcher(t *testing.T) {
 	t.Parallel()
 
+	tableInfoWithSinglePK := model.BuildTableInfo("test", "t1", []*model.Column{
+		{
+			Name: "a",
+			Flag: model.HandleKeyFlag | model.PrimaryKeyFlag,
+		}, {
+			Name: "b",
+		},
+	}, [][]int{{0}})
+
+	tableInfoWithCompositePK := model.BuildTableInfo("test", "t2", []*model.Column{
+		{
+			Name: "a",
+			Flag: model.HandleKeyFlag | model.PrimaryKeyFlag,
+		}, {
+			Name: "b",
+			Flag: model.HandleKeyFlag | model.PrimaryKeyFlag,
+		},
+	}, [][]int{{0, 1}})
 	testCases := []struct {
 		row             *model.RowChangedEvent
 		expectPartition int32
 	}{
 		{row: &model.RowChangedEvent{
-			TableInfo: &model.TableInfo{
-				TableName: model.TableName{
-					Schema: "test",
-					Table:  "t1",
-				},
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfoWithSinglePK,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 11,
-					Flag:  model.HandleKeyFlag,
 				}, {
 					Name:  "b",
 					Value: 22,
-					Flag:  0,
 				},
-			},
+			}, tableInfoWithSinglePK),
 		}, expectPartition: 2},
 		{row: &model.RowChangedEvent{
-			TableInfo: &model.TableInfo{
-				TableName: model.TableName{
-					Schema: "test",
-					Table:  "t1",
-				},
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfoWithSinglePK,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 22,
-					Flag:  model.HandleKeyFlag,
 				}, {
 					Name:  "b",
 					Value: 22,
-					Flag:  0,
 				},
-			},
+			}, tableInfoWithSinglePK),
 		}, expectPartition: 11},
 		{row: &model.RowChangedEvent{
-			TableInfo: &model.TableInfo{
-				TableName: model.TableName{
-					Schema: "test",
-					Table:  "t1",
-				},
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfoWithSinglePK,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 11,
-					Flag:  model.HandleKeyFlag,
 				}, {
 					Name:  "b",
 					Value: 33,
-					Flag:  0,
 				},
-			},
+			}, tableInfoWithSinglePK),
 		}, expectPartition: 2},
 		{row: &model.RowChangedEvent{
-			TableInfo: &model.TableInfo{
-				TableName: model.TableName{
-					Schema: "test",
-					Table:  "t2",
-				},
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfoWithCompositePK,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 11,
-					Flag:  model.HandleKeyFlag,
 				}, {
 					Name:  "b",
 					Value: 22,
-					Flag:  model.HandleKeyFlag,
 				},
-			},
+			}, tableInfoWithCompositePK),
 		}, expectPartition: 5},
 		{row: &model.RowChangedEvent{
-			TableInfo: &model.TableInfo{
-				TableName: model.TableName{
-					Schema: "test",
-					Table:  "t2",
-				},
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfoWithCompositePK,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "b",
 					Value: 22,
-					Flag:  model.HandleKeyFlag,
 				}, {
 					Name:  "a",
 					Value: 11,
-					Flag:  model.HandleKeyFlag,
 				},
-			},
+			}, tableInfoWithCompositePK),
 		}, expectPartition: 5},
 		{row: &model.RowChangedEvent{
-			TableInfo: &model.TableInfo{
-				TableName: model.TableName{
-					Schema: "test",
-					Table:  "t2",
-				},
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfoWithCompositePK,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 11,
-					Flag:  model.HandleKeyFlag,
 				}, {
 					Name:  "b",
 					Value: 0,
-					Flag:  model.HandleKeyFlag,
 				},
-			},
+			}, tableInfoWithCompositePK),
 		}, expectPartition: 14},
 		{row: &model.RowChangedEvent{
-			TableInfo: &model.TableInfo{
-				TableName: model.TableName{
-					Schema: "test",
-					Table:  "t2",
-				},
-			},
-			Columns: []*model.Column{
+			TableInfo: tableInfoWithCompositePK,
+			Columns: model.Columns2ColumnDatas([]*model.Column{
 				{
 					Name:  "a",
 					Value: 11,
-					Flag:  model.HandleKeyFlag,
 				}, {
 					Name:  "b",
 					Value: 33,
-					Flag:  model.HandleKeyFlag,
 				},
-			},
+			}, tableInfoWithCompositePK),
 		}, expectPartition: 2},
 	}
 	p := NewIndexValueDispatcher("")
@@ -196,14 +165,16 @@ func TestIndexValueDispatcherWithIndexName(t *testing.T) {
 			},
 		},
 	}
+	cols := []*model.Column{
+		{
+			Name:  "a",
+			Value: 11,
+		},
+	}
+
 	event := &model.RowChangedEvent{
 		TableInfo: tableInfo,
-		Columns: []*model.Column{
-			{
-				Name:  "a",
-				Value: 11,
-			},
-		},
+		Columns:   model.Columns2ColumnDatas(cols, tableInfo),
 	}
 
 	p := NewIndexValueDispatcher("index2")

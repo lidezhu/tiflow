@@ -75,11 +75,16 @@ type avroEncodeResult struct {
 }
 
 func (a *BatchEncoder) encodeKey(ctx context.Context, topic string, e *model.RowChangedEvent) ([]byte, error) {
-	cols, colInfos := e.HandleKeyColInfos()
+	colDatas, colInfos := e.HandleKeyColInfos()
 	// result may be nil if the event has no handle key columns, this may happen in the force replicate mode.
 	// todo: disallow force replicate mode if using the avro.
-	if len(cols) == 0 {
+	if len(colDatas) == 0 {
 		return nil, nil
+	}
+
+	cols := make([]*model.Column, 0)
+	for _, colData := range colDatas {
+		cols = append(cols, model.ColumnData2Column(colData, e.TableInfo))
 	}
 
 	keyColumns := &avroEncodeInput{
@@ -163,9 +168,16 @@ func (a *BatchEncoder) encodeValue(ctx context.Context, topic string, e *model.R
 		return nil, nil
 	}
 
+	columns := make([]*model.Column, 0)
+	colInfos := make([]rowcodec.ColInfo, 0)
+	for _, colData := range e.Columns {
+		columns = append(columns, model.ColumnData2Column(colData, e.TableInfo))
+		colInfos = append(colInfos, e.TableInfo.ForceGetExtraColumnInfo(colData.ColumnID))
+	}
+
 	input := &avroEncodeInput{
-		columns:  e.Columns,
-		colInfos: e.ColInfos,
+		columns:  columns,
+		colInfos: colInfos,
 	}
 	if len(input.columns) == 0 {
 		return nil, nil

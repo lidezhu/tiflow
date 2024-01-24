@@ -95,15 +95,13 @@ func TestRowChangedEventFuncs(t *testing.T) {
 				Table:  "t1",
 			},
 		},
-		PreColumns: []*Column{
+		PreColumns: []*ColumnData{
 			{
-				Name:  "a",
-				Value: 1,
-				Flag:  HandleKeyFlag | PrimaryKeyFlag,
+				ColumnID: 1,
+				Value:    1,
 			}, {
-				Name:  "b",
-				Value: 2,
-				Flag:  0,
+				ColumnID: 2,
+				Value:    2,
 			},
 		},
 	}
@@ -405,14 +403,14 @@ func TestExchangeTablePartition(t *testing.T) {
 func TestSortRowChangedEvent(t *testing.T) {
 	events := []*RowChangedEvent{
 		{
-			PreColumns: []*Column{{}},
-			Columns:    []*Column{{}},
+			PreColumns: []*ColumnData{{}},
+			Columns:    []*ColumnData{{}},
 		},
 		{
-			Columns: []*Column{{}},
+			Columns: []*ColumnData{{}},
 		},
 		{
-			PreColumns: []*Column{{}},
+			PreColumns: []*ColumnData{{}},
 		},
 	}
 	assert.True(t, events[0].IsUpdate())
@@ -476,11 +474,13 @@ func TestTrySplitAndSortUpdateEvent(t *testing.T) {
 		},
 	}
 
+	tableInfo := BuildTableInfo("test", "t", columns, nil)
 	events := []*RowChangedEvent{
 		{
 			CommitTs:   1,
-			Columns:    columns,
-			PreColumns: preColumns,
+			TableInfo:  tableInfo,
+			Columns:    Columns2ColumnDatas(columns, tableInfo),
+			PreColumns: Columns2ColumnDatas(preColumns, tableInfo),
 		},
 	}
 	result, err := trySplitAndSortUpdateEvent(events)
@@ -518,8 +518,9 @@ func TestTrySplitAndSortUpdateEvent(t *testing.T) {
 	events = []*RowChangedEvent{
 		{
 			CommitTs:   1,
-			Columns:    columns,
-			PreColumns: preColumns,
+			TableInfo:  tableInfo,
+			Columns:    Columns2ColumnDatas(columns, tableInfo),
+			PreColumns: Columns2ColumnDatas(preColumns, tableInfo),
 		},
 	}
 	result, err = trySplitAndSortUpdateEvent(events)
@@ -558,8 +559,9 @@ func TestTrySplitAndSortUpdateEvent(t *testing.T) {
 	events = []*RowChangedEvent{
 		{
 			CommitTs:   1,
-			Columns:    columns,
-			PreColumns: preColumns,
+			TableInfo:  tableInfo,
+			Columns:    Columns2ColumnDatas(columns, tableInfo),
+			PreColumns: Columns2ColumnDatas(preColumns, tableInfo),
 		},
 	}
 	result, err = trySplitAndSortUpdateEvent(events)
@@ -567,8 +569,8 @@ func TestTrySplitAndSortUpdateEvent(t *testing.T) {
 	require.Equal(t, 1, len(result))
 }
 
-var ukUpdatedEvent = &RowChangedEvent{
-	PreColumns: []*Column{
+func TestTrySplitAndSortUpdateEventOne(t *testing.T) {
+	columns := []*Column{
 		{
 			Name:  "col1",
 			Flag:  BinaryFlag,
@@ -576,26 +578,28 @@ var ukUpdatedEvent = &RowChangedEvent{
 		},
 		{
 			Name:  "col2",
-			Flag:  HandleKeyFlag | UniqueKeyFlag,
-			Value: "col2-value",
-		},
-	},
-
-	Columns: []*Column{
-		{
-			Name:  "col1",
-			Flag:  BinaryFlag,
-			Value: "col1-value",
-		},
-		{
-			Name:  "col2",
-			Flag:  HandleKeyFlag | UniqueKeyFlag,
+			Flag:  HandleKeyFlag | UniqueKeyFlag | PrimaryKeyFlag,
 			Value: "col2-value-updated",
 		},
-	},
-}
-
-func TestTrySplitAndSortUpdateEventOne(t *testing.T) {
+	}
+	preColumns := []*Column{
+		{
+			Name:  "col1",
+			Flag:  BinaryFlag,
+			Value: "col1-value",
+		},
+		{
+			Name:  "col2",
+			Flag:  HandleKeyFlag | UniqueKeyFlag | PrimaryKeyFlag,
+			Value: "col2-value",
+		},
+	}
+	tableInfo := BuildTableInfo("test", "t", columns, [][]int{{1}})
+	ukUpdatedEvent := &RowChangedEvent{
+		TableInfo:  tableInfo,
+		PreColumns: Columns2ColumnDatas(preColumns, tableInfo),
+		Columns:    Columns2ColumnDatas(columns, tableInfo),
+	}
 	txn := &SingleTableTxn{
 		Rows: []*RowChangedEvent{ukUpdatedEvent},
 	}

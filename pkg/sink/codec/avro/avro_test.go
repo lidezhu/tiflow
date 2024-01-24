@@ -600,7 +600,6 @@ func indentJSON(j string) string {
 
 func newLargeEvent() *model.RowChangedEvent {
 	cols := make([]*model.Column, 0)
-	colInfos := make([]rowcodec.ColInfo, 0)
 
 	cols = append(
 		cols,
@@ -608,22 +607,12 @@ func newLargeEvent() *model.RowChangedEvent {
 			Name:  "id",
 			Value: int64(1),
 			Type:  mysql.TypeLong,
-			Flag:  model.HandleKeyFlag,
-		},
-	)
-	colInfos = append(
-		colInfos,
-		rowcodec.ColInfo{
-			ID:            1000,
-			IsPKHandle:    true,
-			VirtualGenCol: false,
-			Ft:            types.NewFieldType(mysql.TypeLong),
+			Flag:  model.HandleKeyFlag | model.PrimaryKeyFlag,
 		},
 	)
 
 	for _, v := range avroTestColumns {
 		cols = append(cols, &v.col)
-		colInfos = append(colInfos, v.colInfo)
 
 		colNew := v.col
 		colNew.Name = colNew.Name + "nullable"
@@ -634,19 +623,13 @@ func newLargeEvent() *model.RowChangedEvent {
 		colInfoNew.ID += int64(len(avroTestColumns))
 
 		cols = append(cols, &colNew)
-		colInfos = append(colInfos, colInfoNew)
 	}
 
+	tableInfo := model.BuildTableInfo("testdb", "avroencode", cols, [][]int{{0}})
 	return &model.RowChangedEvent{
-		CommitTs: 417318403368288260,
-		TableInfo: &model.TableInfo{
-			TableName: model.TableName{
-				Schema: "testdb",
-				Table:  "avroencode",
-			},
-		},
-		Columns:  cols,
-		ColInfos: colInfos,
+		CommitTs:  417318403368288260,
+		TableInfo: tableInfo,
+		Columns:   model.Columns2ColumnDatas(cols, tableInfo),
 	}
 }
 
@@ -654,9 +637,15 @@ func TestRowToAvroSchemaEnableChecksum(t *testing.T) {
 	t.Parallel()
 
 	event := newLargeEvent()
+	columns := make([]*model.Column, 0)
+	colInfos := make([]rowcodec.ColInfo, 0)
+	for _, colData := range event.Columns {
+		columns = append(columns, model.ColumnData2Column(colData, event.TableInfo))
+		colInfos = append(colInfos, event.TableInfo.ForceGetExtraColumnInfo(colData.ColumnID))
+	}
 	input := &avroEncodeInput{
-		event.Columns,
-		event.ColInfos,
+		columns,
+		colInfos,
 	}
 
 	rand.New(rand.NewSource(time.Now().Unix())).Shuffle(len(input.columns), func(i, j int) {
@@ -685,9 +674,15 @@ func TestRowToAvroSchema(t *testing.T) {
 	t.Parallel()
 
 	event := newLargeEvent()
+	columns := make([]*model.Column, 0)
+	colInfos := make([]rowcodec.ColInfo, 0)
+	for _, colData := range event.Columns {
+		columns = append(columns, model.ColumnData2Column(colData, event.TableInfo))
+		colInfos = append(colInfos, event.TableInfo.ForceGetExtraColumnInfo(colData.ColumnID))
+	}
 	input := &avroEncodeInput{
-		event.Columns,
-		event.ColInfos,
+		columns,
+		colInfos,
 	}
 
 	codecConfig := common.NewConfig(config.ProtocolAvro)
@@ -713,9 +708,15 @@ func TestRowToAvroData(t *testing.T) {
 	t.Parallel()
 
 	event := newLargeEvent()
+	columns := make([]*model.Column, 0)
+	colInfos := make([]rowcodec.ColInfo, 0)
+	for _, colData := range event.Columns {
+		columns = append(columns, model.ColumnData2Column(colData, event.TableInfo))
+		colInfos = append(colInfos, event.TableInfo.ForceGetExtraColumnInfo(colData.ColumnID))
+	}
 	input := &avroEncodeInput{
-		columns:  event.Columns,
-		colInfos: event.ColInfos,
+		columns,
+		colInfos,
 	}
 
 	codecConfig := common.NewConfig(config.ProtocolAvro)
@@ -939,20 +940,24 @@ func TestArvoAppendRowChangedEventWithCallback(t *testing.T) {
 	msgs := encoder.Build()
 	require.Len(t, msgs, 0, "no message should be built and no panic")
 
+	cols := []*model.Column{{
+		Name: "col1",
+		Type: mysql.TypeVarchar,
+		Flag: model.HandleKeyFlag | model.PrimaryKeyFlag,
+	}}
+	tableInfo := model.BuildTableInfo("a", "b", cols, [][]int{{0}})
 	row := &model.RowChangedEvent{
 		CommitTs:  1,
+<<<<<<< HEAD
 		TableInfo: &model.TableInfo{TableName: model.TableName{Schema: "a", Table: "b"}},
 		Columns: []*model.Column{{
+=======
+		TableInfo: tableInfo,
+		Columns: model.Columns2ColumnDatas([]*model.Column{{
+>>>>>>> a3d5b47db (alpha version)
 			Name:  "col1",
-			Type:  mysql.TypeVarchar,
 			Value: []byte("aa"),
-		}},
-		ColInfos: []rowcodec.ColInfo{{
-			ID:            1000,
-			IsPKHandle:    true,
-			VirtualGenCol: false,
-			Ft:            types.NewFieldType(mysql.TypeVarchar),
-		}},
+		}}, tableInfo),
 	}
 
 	expected := 0
