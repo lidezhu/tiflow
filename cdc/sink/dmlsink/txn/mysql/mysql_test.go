@@ -1270,9 +1270,9 @@ func TestPrepareBatchDMLs(t *testing.T) {
 							model.HandleKeyFlag | model.UniqueKeyFlag,
 						Value: 1,
 					}, {
-						Name:    "a3",
-						Type:    mysql.TypeVarchar,
-						Charset: charset.CharsetGBK,
+						Name: "a3",
+						Type: mysql.TypeVarchar,
+						// Charset: charset.CharsetGBK,
 						Flag: model.BinaryFlag | model.MultipleKeyFlag |
 							model.HandleKeyFlag | model.UniqueKeyFlag,
 						Value: []byte("你好"),

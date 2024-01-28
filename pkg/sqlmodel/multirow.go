@@ -260,6 +260,11 @@ func GenInsertSQL(tp DMLType, changes ...*RowChange) (string, []interface{}) {
 		columnNum++
 		buf.WriteString(quotes.QuoteName(col.Name.O))
 	}
+	log.Info("generatedColumns",
+		zap.Any("generatedColumns", generatedColumns),
+		zap.Any("skipColIdx", skipColIdx),
+		zap.String("table", first.sourceTable.Table),
+		zap.Any("columns", first.sourceTableInfo.Columns))
 	buf.WriteString(") VALUES ")
 	holder := valuesHolder(columnNum)
 	for i := range changes {
