@@ -420,6 +420,12 @@ func (m *logManager) postFlush(tableRtsMap *spanz.HashMap[model.Ts]) {
 					zap.Stringer("span", &span),
 					zap.Uint64("flushed", flushed),
 					zap.Uint64("current", value.(*statefulRts).getFlushed()))
+			} else {
+				log.Debug("flush redo success",
+					zap.String("namespace", m.cfg.ChangeFeedID.Namespace),
+					zap.String("changefeed", m.cfg.ChangeFeedID.ID),
+					zap.Stringer("span", &span),
+					zap.Uint64("flushed", flushed))
 			}
 		}
 		return true
