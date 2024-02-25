@@ -53,8 +53,6 @@ type Writer struct {
 	op  *writer.LogWriterOptions
 	// maxCommitTS is the max commitTS among the events in one log file
 	maxCommitTS atomic.Uint64
-	// the ts used in file name
-	commitTS atomic.Uint64
 	// the ts send with the event
 	eventCommitTS atomic.Uint64
 	running       atomic.Bool
@@ -257,8 +255,7 @@ func (w *Writer) close(ctx context.Context) error {
 
 	// rename the file name from commitTs.log.tmp to maxCommitTS.log if closed safely
 	// after rename, the file name could be used for search, since the ts is the max ts for all events in the file.
-	w.commitTS.Store(w.maxCommitTS.Load())
-	err := os.Rename(w.file.Name(), w.filePath())
+	err := os.Rename(w.file.Name(), w.filePath(w.maxCommitTS.Load()))
 	if err != nil {
 		return errors.WrapError(errors.ErrRedoFileOp, err)
 	}
@@ -290,7 +287,7 @@ func (w *Writer) close(ctx context.Context) error {
 	return errors.WrapError(errors.ErrRedoFileOp, err)
 }
 
-func (w *Writer) getLogFileName() string {
+func (w *Writer) getLogFileName(commitTS model.Ts) string {
 	if w.op != nil && w.op.GetLogFileName != nil {
 		return w.op.GetLogFileName()
 	}
@@ -298,17 +295,17 @@ func (w *Writer) getLogFileName() string {
 	if model.DefaultNamespace == w.cfg.ChangeFeedID.Namespace {
 		return fmt.Sprintf(redo.RedoLogFileFormatV1,
 			w.cfg.CaptureID, w.cfg.ChangeFeedID.ID, w.cfg.LogType,
-			w.commitTS.Load(), uid, redo.LogEXT)
+			commitTS, uid, redo.LogEXT)
 	}
 	return fmt.Sprintf(redo.RedoLogFileFormatV2,
 		w.cfg.CaptureID, w.cfg.ChangeFeedID.Namespace, w.cfg.ChangeFeedID.ID,
-		w.cfg.LogType, w.commitTS.Load(), uid, redo.LogEXT)
+		w.cfg.LogType, commitTS, uid, redo.LogEXT)
 }
 
 // filePath always creates a new, unique file path, note this function is not
 // thread-safe, writer needs to ensure lock is acquired when calling it.
-func (w *Writer) filePath() string {
-	fp := filepath.Join(w.cfg.Dir, w.getLogFileName())
+func (w *Writer) filePath(commitTS model.Ts) string {
+	fp := filepath.Join(w.cfg.Dir, w.getLogFileName(commitTS))
 	w.ongoingFilePath = fp
 	return fp
 }
@@ -327,9 +324,8 @@ func (w *Writer) openNew() error {
 	// reset ts used in file name when new file
 	var f *os.File
 	if w.allocator == nil {
-		w.commitTS.Store(w.eventCommitTS.Load())
 		w.maxCommitTS.Store(w.eventCommitTS.Load())
-		path := w.filePath() + redo.TmpEXT
+		path := w.filePath(w.eventCommitTS.Load()) + redo.TmpEXT
 		f, err = openTruncFile(path)
 		if err != nil {
 			return errors.WrapError(errors.ErrRedoFileOp,

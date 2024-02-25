@@ -603,6 +603,12 @@ func (m *SinkManager) generateSinkTasks(ctx context.Context) error {
 						nextLowerBoundPos: lastWrittenPos.Next(),
 						version:           slowestTableProgress.version,
 					}
+					log.Info("Complete sink task",
+						zap.String("namespace", m.changefeedID.Namespace),
+						zap.String("changefeed", m.changefeedID.ID),
+						zap.Stringer("span", &tableSink.span),
+						zap.Any("lowerBound", lowerBound),
+						zap.Any("lastWrittenPos", lastWrittenPos))
 					m.sinkProgressHeap.push(p)
 					select {
 					case m.sinkWorkerAvailable <- struct{}{}:
@@ -617,7 +623,7 @@ func (m *SinkManager) generateSinkTasks(ctx context.Context) error {
 			case <-ctx.Done():
 				return ctx.Err()
 			case m.sinkTaskChan <- t:
-				log.Debug("Generate sink task",
+				log.Info("Generate sink task",
 					zap.String("namespace", m.changefeedID.Namespace),
 					zap.String("changefeed", m.changefeedID.ID),
 					zap.Stringer("span", &tableSink.span),
@@ -730,6 +736,12 @@ func (m *SinkManager) generateRedoTasks(ctx context.Context) error {
 				getUpperBound: m.getUpperBound,
 				tableSink:     tableSink,
 				callback: func(lastWrittenPos sorter.Position) {
+					log.Info("Complete redo task",
+						zap.String("namespace", m.changefeedID.Namespace),
+						zap.String("changefeed", m.changefeedID.ID),
+						zap.Stringer("span", &tableSink.span),
+						zap.Any("lowerBound", lowerBound),
+						zap.Any("lastWrittenPos", lastWrittenPos))
 					p := &progress{
 						span:              tableSink.span,
 						nextLowerBoundPos: lastWrittenPos.Next(),
@@ -749,7 +761,7 @@ func (m *SinkManager) generateRedoTasks(ctx context.Context) error {
 			case <-ctx.Done():
 				return ctx.Err()
 			case m.redoTaskChan <- t:
-				log.Debug("Generate redo task",
+				log.Info("Generate redo task",
 					zap.String("namespace", m.changefeedID.Namespace),
 					zap.String("changefeed", m.changefeedID.ID),
 					zap.Stringer("span", &tableSink.span),
