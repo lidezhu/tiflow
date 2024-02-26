@@ -460,7 +460,7 @@ func (m *logManager) flushLog(
 		defer atomic.StoreInt64(&m.flushing, 0)
 
 		tableRtsMap := m.prepareForFlush()
-		log.Debug("Flush redo log",
+		log.Info("Flush redo log",
 			zap.String("namespace", m.cfg.ChangeFeedID.Namespace),
 			zap.String("changefeed", m.cfg.ChangeFeedID.ID),
 			zap.String("logType", m.cfg.LogType),
@@ -476,6 +476,11 @@ func (m *logManager) flushLog(
 			handleErr(err)
 			return
 		}
+		log.Info("Flush redo log done",
+			zap.String("namespace", m.cfg.ChangeFeedID.Namespace),
+			zap.String("changefeed", m.cfg.ChangeFeedID.ID),
+			zap.String("logType", m.cfg.LogType),
+			zap.Float64("totalTime", time.Since(m.lastFlushTime).Seconds()))
 		m.postFlush(tableRtsMap)
 	}()
 }
