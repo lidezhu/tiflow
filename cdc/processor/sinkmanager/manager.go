@@ -604,6 +604,12 @@ func (m *SinkManager) generateSinkTasks(ctx context.Context) error {
 						version:           slowestTableProgress.version,
 					}
 					m.sinkProgressHeap.push(p)
+					log.Info("Complete sink task",
+						zap.String("namespace", m.changefeedID.Namespace),
+						zap.String("changefeed", m.changefeedID.ID),
+						zap.Stringer("span", &tableSink.span),
+						zap.Any("lowerBound", lowerBound),
+						zap.Any("lastWrittenPos", lastWrittenPos))
 					select {
 					case m.sinkWorkerAvailable <- struct{}{}:
 					default:
@@ -617,7 +623,7 @@ func (m *SinkManager) generateSinkTasks(ctx context.Context) error {
 			case <-ctx.Done():
 				return ctx.Err()
 			case m.sinkTaskChan <- t:
-				log.Debug("Generate sink task",
+				log.Info("Generate sink task",
 					zap.String("namespace", m.changefeedID.Namespace),
 					zap.String("changefeed", m.changefeedID.ID),
 					zap.Stringer("span", &tableSink.span),
@@ -625,7 +631,7 @@ func (m *SinkManager) generateSinkTasks(ctx context.Context) error {
 					zap.Any("currentUpperBound", upperBound))
 			default:
 				m.sinkMemQuota.Refund(requestMemSize)
-				log.Debug("MemoryQuotaTracing: refund memory for table sink task",
+				log.Info("MemoryQuotaTracing: refund memory for table sink task",
 					zap.String("namespace", m.changefeedID.Namespace),
 					zap.String("changefeed", m.changefeedID.ID),
 					zap.Stringer("span", &tableSink.span),

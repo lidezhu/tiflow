@@ -95,6 +95,7 @@ func New[E dmlsink.TableEvent, P dmlsink.Appender[E]](
 // AppendRowChangedEvents appends row changed or txn events to the table sink.
 func (e *EventTableSink[E, P]) AppendRowChangedEvents(rows ...*model.RowChangedEvent) {
 	e.eventBuffer = e.eventAppender.Append(e.eventBuffer, rows...)
+	log.Info("EventTableSink.AppendRowChangedEvents", zap.Int("rows", len(rows)))
 	e.metricsTableSinkTotalRows.Add(float64(len(rows)))
 }
 
