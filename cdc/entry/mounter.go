@@ -591,7 +591,6 @@ func (m *mounter) mountRowKVEntry(tableInfo *model.TableInfo, row *rowKVEntry, d
 	event.Checksum = checksum
 	event.ApproximateDataSize = dataSize
 	event.HandleKey = row.RecordID
-	log.Info("mounter.event", zap.Uint64("commitTS", event.CommitTs))
 
 	return event, rawRow, nil
 }
