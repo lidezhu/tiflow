@@ -385,6 +385,8 @@ func (r *RowChangedEvent) reset() {
 	r.Columns = nil
 	r.PreColumns = nil
 	r.Checksum = nil
+	r.SplitTxn = false
+	r.ReplicatingTs = 0
 }
 
 func (r *RowChangedEvent) Release() {

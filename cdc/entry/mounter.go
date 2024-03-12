@@ -584,13 +584,13 @@ func (m *mounter) mountRowKVEntry(tableInfo *model.TableInfo, row *rowKVEntry, d
 	event.StartTs = row.StartTs
 	event.CommitTs = row.CRTs
 	event.RowID = intRowID
-	event.HandleKey = row.RecordID
 	event.PhysicalTableID = row.PhysicalTableID
 	event.TableInfo = tableInfo
 	event.Columns = cols
 	event.PreColumns = preCols
 	event.Checksum = checksum
 	event.ApproximateDataSize = dataSize
+	event.HandleKey = row.RecordID
 
 	return event, rawRow, nil
 }
