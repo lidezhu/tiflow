@@ -390,6 +390,7 @@ func (r *RowChangedEvent) reset() {
 }
 
 func (r *RowChangedEvent) Release() {
+	log.Info("RowChangedEvent.Release")
 	r.reset()
 	rowChangedEventPool.Put(r)
 }
