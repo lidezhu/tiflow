@@ -580,20 +580,19 @@ func (m *mounter) mountRowKVEntry(tableInfo *model.TableInfo, row *rowKVEntry, d
 		}
 	}
 
-	return &model.RowChangedEvent{
-		StartTs:         row.StartTs,
-		CommitTs:        row.CRTs,
-		RowID:           intRowID,
-		HandleKey:       row.RecordID,
-		PhysicalTableID: row.PhysicalTableID,
-		TableInfo:       tableInfo,
-		Columns:         cols,
-		PreColumns:      preCols,
+	event := model.NewRowChangedEvent()
+	event.StartTs = row.StartTs
+	event.CommitTs = row.CRTs
+	event.RowID = intRowID
+	event.HandleKey = row.RecordID
+	event.PhysicalTableID = row.PhysicalTableID
+	event.TableInfo = tableInfo
+	event.Columns = cols
+	event.PreColumns = preCols
+	event.Checksum = checksum
+	event.ApproximateDataSize = dataSize
 
-		Checksum: checksum,
-
-		ApproximateDataSize: dataSize,
-	}, rawRow, nil
+	return event, rawRow, nil
 }
 
 var emptyBytes = make([]byte, 0)

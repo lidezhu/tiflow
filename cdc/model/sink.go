@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"unsafe"
 
@@ -319,6 +320,17 @@ func (d *DDLEvent) ToRedoLog() *RedoLog {
 	}
 }
 
+var rowChangedEventPool = sync.Pool{
+	New: func() interface{} {
+		return &RowChangedEvent{}
+	},
+}
+
+func NewRowChangedEvent() *RowChangedEvent {
+	r := rowChangedEventPool.Get().(*RowChangedEvent)
+	return r
+}
+
 // RowChangedEvent represents a row changed event
 //
 //msgp:ignore RowChangedEvent
@@ -366,6 +378,18 @@ type RowChangedEvent struct {
 	//    tidb will make a hidden column called "_tidb_rowid" as the handle.
 	//    due to the type of "_tidb_rowid" is int, so we also use IntHandle to represent.
 	HandleKey kv.Handle
+}
+
+func (r *RowChangedEvent) reset() {
+	r.TableInfo = nil
+	r.Columns = nil
+	r.PreColumns = nil
+	r.Checksum = nil
+}
+
+func (r *RowChangedEvent) Release() {
+	r.reset()
+	rowChangedEventPool.Put(r)
 }
 
 // RowChangedEventInRedoLog is used to store RowChangedEvent in redo log v2 format
