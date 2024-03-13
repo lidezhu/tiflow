@@ -85,6 +85,11 @@ func (i *MountedEventIter) Next(ctx context.Context) (event *model.PolymorphicEv
 		i.nextToEmit += 1
 	}
 	if event != nil && event.Row != nil {
+		log.Info("MountedEventIter.Next",
+			zap.Int("nextToEmit", i.nextToEmit),
+			zap.Int("len(rawEvents)", len(i.rawEvents)),
+			zap.Uint64("commitTS", event.Row.CommitTs),
+			zap.Uint64("startTS", event.Row.StartTs))
 		if i.lastCommitTS != 0 && event.Row.CommitTs < i.lastCommitTS {
 			log.Panic("commitTS must be monotonically increasing",
 				zap.Uint64("lastCommitTS", i.lastCommitTS),
@@ -92,12 +97,10 @@ func (i *MountedEventIter) Next(ctx context.Context) (event *model.PolymorphicEv
 				zap.Uint64("startTS", event.Row.StartTs))
 		}
 		i.lastCommitTS = event.Row.CommitTs
+	} else {
+		log.Info("MountedEventIter.Next meet non row")
 	}
 
-	// log.Info("MountedEventIter.Next", zap.Any("event.Row", event.Row))
-	// if event.Row != nil {
-	// 	log.Info("MountedEventIter.Next", zap.Uint64("commitTS", event.Row.CommitTs))
-	// }
 	return
 }
 
@@ -105,6 +108,7 @@ func (i *MountedEventIter) readBatch(ctx context.Context) error {
 	if i.mg == nil || i.iter == nil {
 		return nil
 	}
+	log.Info("MountedEventIter.readBatch")
 
 	i.nextToEmit = 0
 	i.rawEvents = i.rawEvents[:0]
