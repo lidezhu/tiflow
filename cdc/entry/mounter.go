@@ -594,6 +594,10 @@ func (m *mounter) mountRowKVEntry(tableInfo *model.TableInfo, row *rowKVEntry, d
 	if len(event.Columns) == 0 && len(event.PreColumns) == 0 {
 		log.Warn("meet empty event")
 	}
+	log.Info("mounter.mountRowKVEntry",
+		zap.Uint64("startTS", event.StartTs),
+		zap.Uint64("commitTs", event.CommitTs),
+		zap.Int64("rowID", event.RowID))
 
 	return event, rawRow, nil
 }
