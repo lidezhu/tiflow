@@ -262,6 +262,9 @@ func (a *tableSinkAdvancer) finish(upperBound sorter.Position) error {
 
 // appendEvents appends events to the buffer and record the memory usage.
 func (a *tableSinkAdvancer) appendEvents(events []*model.RowChangedEvent, size uint64) {
+	for _, e := range events {
+		log.Info("advancer.appendEvents", zap.Uint64("commitTS", e.CommitTs))
+	}
 	a.events = append(a.events, events...)
 	// Record the memory usage.
 	a.usedMem += size
