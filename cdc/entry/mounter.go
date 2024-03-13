@@ -591,6 +591,9 @@ func (m *mounter) mountRowKVEntry(tableInfo *model.TableInfo, row *rowKVEntry, d
 	event.Checksum = checksum
 	event.ApproximateDataSize = dataSize
 	event.HandleKey = row.RecordID
+	if len(event.Columns) == 0 && len(event.PreColumns) == 0 {
+		log.Warn("meet empty event")
+	}
 
 	return event, rawRow, nil
 }

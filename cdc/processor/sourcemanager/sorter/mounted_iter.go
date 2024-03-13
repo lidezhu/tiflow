@@ -17,10 +17,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/pingcap/log"
 	"github.com/pingcap/tiflow/cdc/entry"
 	"github.com/pingcap/tiflow/cdc/model"
 	"github.com/pingcap/tiflow/cdc/processor/memquota"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
 // MountedEventIter is just like EventIterator, but returns mounted events.
@@ -80,9 +82,9 @@ func (i *MountedEventIter) Next(ctx context.Context) (event *model.PolymorphicEv
 		txnFinished = i.rawEvents[idx].txnFinished
 		i.nextToEmit += 1
 	}
-	// if event.Row != nil {
-	// 	log.Info("MountedEventIter.Next", zap.Uint64("commitTS", event.Row.CommitTs))
-	// }
+	if event.Row != nil {
+		log.Info("MountedEventIter.Next", zap.Uint64("commitTS", event.Row.CommitTs))
+	}
 	return
 }
 
