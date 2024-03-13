@@ -381,6 +381,9 @@ type RowChangedEvent struct {
 }
 
 func (r *RowChangedEvent) reset() {
+	r.StartTs = 0
+	r.CommitTs = 0
+	r.PhysicalTableID = 0
 	r.TableInfo = nil
 	r.Columns = nil
 	r.PreColumns = nil
