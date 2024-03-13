@@ -84,7 +84,7 @@ func (i *MountedEventIter) Next(ctx context.Context) (event *model.PolymorphicEv
 		txnFinished = i.rawEvents[idx].txnFinished
 		i.nextToEmit += 1
 	}
-	if event.Row != nil {
+	if event != nil && event.Row != nil {
 		if i.lastCommitTS != 0 && event.Row.CommitTs < i.lastCommitTS {
 			log.Panic("commitTS must be monotonically increasing",
 				zap.Uint64("lastCommitTS", i.lastCommitTS),
