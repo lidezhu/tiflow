@@ -207,7 +207,6 @@ func (w *sinkWorker) handleTask(ctx context.Context, task *sinkTask) (finalErr e
 			e.Row.ReplicatingTs = task.tableSink.replicateTs
 			x, size := handleRowChangedEvents(w.changefeedID, task.span, e)
 			advancer.appendEvents(x, size)
-			log.Info("advancer.appendEvents", zap.Uint64("commitTS", x.CommitTs))
 		}
 
 		if err := advancer.tryAdvanceAndAcquireMem(false, pos.Valid()); err != nil {
