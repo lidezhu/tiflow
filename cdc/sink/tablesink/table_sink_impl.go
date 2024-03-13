@@ -164,14 +164,14 @@ func (e *EventTableSink[E, P]) UpdateResolvedTs(resolvedTs model.ResolvedTs) err
 				flushLag := float64(currentTs-phyCommitTs) / 1e3
 				e.metricsTableSinkFlushLagDuration.Observe(flushLag)
 				postEventFlushFunc()
-				switch v := any(ev).(type) {
-				case *model.RowChangedEvent:
-					v.Release()
-				case *model.SingleTableTxn:
-					for _, r := range v.Rows {
-						r.Release()
-					}
-				default:
+				// switch v := any(ev).(type) {
+				// case *model.RowChangedEvent:
+				// 	v.Release()
+				// case *model.SingleTableTxn:
+				// 	for _, r := range v.Rows {
+				// 		r.Release()
+				// 	}
+				// default:
 				}
 			},
 			SinkState: &e.state,
