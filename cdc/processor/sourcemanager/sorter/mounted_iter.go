@@ -90,6 +90,7 @@ func (i *MountedEventIter) Next(ctx context.Context) (event *model.PolymorphicEv
 			zap.Int("len(rawEvents)", len(i.rawEvents)),
 			zap.Uint64("commitTS", event.Row.CommitTs),
 			zap.Uint64("startTS", event.Row.StartTs),
+			zap.Int64("rowId", event.Row.RowID),
 			zap.Uint64("rawCommitTS", event.RawKV.CRTs),
 			zap.Uint64("rawStartTS", event.RawKV.StartTs))
 		if i.lastCommitTS != 0 && event.Row.CommitTs < i.lastCommitTS {
