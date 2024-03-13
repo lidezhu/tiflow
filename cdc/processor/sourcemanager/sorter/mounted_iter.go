@@ -82,9 +82,10 @@ func (i *MountedEventIter) Next(ctx context.Context) (event *model.PolymorphicEv
 		txnFinished = i.rawEvents[idx].txnFinished
 		i.nextToEmit += 1
 	}
-	if event.Row != nil {
-		log.Info("MountedEventIter.Next", zap.Uint64("commitTS", event.Row.CommitTs))
-	}
+	log.Info("MountedEventIter.Next", zap.Any("event.Row", event.Row))
+	// if event.Row != nil {
+	// 	log.Info("MountedEventIter.Next", zap.Uint64("commitTS", event.Row.CommitTs))
+	// }
 	return
 }
 
