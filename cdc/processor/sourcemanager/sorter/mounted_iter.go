@@ -89,7 +89,9 @@ func (i *MountedEventIter) Next(ctx context.Context) (event *model.PolymorphicEv
 			zap.Int("nextToEmit", i.nextToEmit),
 			zap.Int("len(rawEvents)", len(i.rawEvents)),
 			zap.Uint64("commitTS", event.Row.CommitTs),
-			zap.Uint64("startTS", event.Row.StartTs))
+			zap.Uint64("startTS", event.Row.StartTs),
+			zap.Uint64("rawCommitTS", event.RawKV.CRTs),
+			zap.Uint64("rawStartTS", event.RawKV.StartTs))
 		if i.lastCommitTS != 0 && event.Row.CommitTs < i.lastCommitTS {
 			log.Panic("commitTS must be monotonically increasing",
 				zap.Uint64("lastCommitTS", i.lastCommitTS),
@@ -140,7 +142,8 @@ func (i *MountedEventIter) readBatch(ctx context.Context) error {
 			size = event.RawKV.ApproximateDataSize()
 			log.Info("MountedEventIter.readBatch",
 				zap.Uint64("startTS", event.RawKV.StartTs),
-				zap.Uint64("commitTS", event.RawKV.CRTs))
+				zap.Uint64("commitTS", event.RawKV.CRTs),
+				zap.Int("index", len(i.rawEvents)))
 		}
 		keepFetching = i.quota.TryAcquire(uint64(size))
 		if !keepFetching {
