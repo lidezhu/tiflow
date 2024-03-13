@@ -172,7 +172,7 @@ func (e *EventTableSink[E, P]) UpdateResolvedTs(resolvedTs model.ResolvedTs) err
 				// 		r.Release()
 				// 	}
 				// default:
-				}
+				// }
 			},
 			SinkState: &e.state,
 		}
