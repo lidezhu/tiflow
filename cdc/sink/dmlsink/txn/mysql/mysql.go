@@ -438,7 +438,7 @@ func (s *mysqlBackend) batchSingleTxnDmls(
 	translateToInsert bool,
 ) (sqls []string, values [][]interface{}) {
 	insertRows, updateRows, deleteRows := s.groupRowsByType(event, tableInfo, !translateToInsert)
-	log.Info("batchSingleTxnDmls", zap.Int("insertRows", len(insertRows)), zap.Int("updateRows", len(updateRows)), zap.Int("deleteRows", len(deleteRows)))
+	// log.Info("batchSingleTxnDmls", zap.Int("insertRows", len(insertRows)), zap.Int("updateRows", len(updateRows)), zap.Int("deleteRows", len(deleteRows)))
 
 	// handle delete
 	if len(deleteRows) > 0 {
@@ -562,7 +562,7 @@ func (s *mysqlBackend) prepareDMLs() *preparedDMLs {
 		}
 
 		// Determine whether to use batch dml feature here.
-		if s.cfg.BatchDMLEnable {
+		if s.cfg.BatchDMLEnable && len(event.Event.Rows) > 1 {
 			tableColumns := firstRow.Columns
 			if firstRow.IsDelete() {
 				tableColumns = firstRow.PreColumns
