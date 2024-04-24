@@ -438,6 +438,7 @@ func (s *mysqlBackend) batchSingleTxnDmls(
 	translateToInsert bool,
 ) (sqls []string, values [][]interface{}) {
 	insertRows, updateRows, deleteRows := s.groupRowsByType(event, tableInfo, !translateToInsert)
+	log.Info("batchSingleTxnDmls", zap.Int("insertRows", len(insertRows)), zap.Int("updateRows", len(updateRows)), zap.Int("deleteRows", len(deleteRows)))
 
 	// handle delete
 	if len(deleteRows) > 0 {
