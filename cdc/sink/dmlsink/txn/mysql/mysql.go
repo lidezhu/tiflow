@@ -746,7 +746,8 @@ func (s *mysqlBackend) execDMLWithMaxRetries(pctx context.Context, dmls *prepare
 	start := time.Now()
 	// approximateSize is multiplied by 2 because in extreme circustumas, every
 	// byte in dmls can be escaped and adds one byte.
-	fallbackToSeqWay := dmls.approximateSize*2 > s.maxAllowedPacket
+	// fallbackToSeqWay := dmls.approximateSize*2 > s.maxAllowedPacket
+	fallbackToSeqWay := false
 	return retry.Do(pctx, func() error {
 		writeTimeout, _ := time.ParseDuration(s.cfg.WriteTimeout)
 		writeTimeout += networkDriftDuration
@@ -812,10 +813,11 @@ func (s *mysqlBackend) execDMLWithMaxRetries(pctx context.Context, dmls *prepare
 		if err != nil {
 			return errors.Trace(err)
 		}
-		log.Debug("Exec Rows succeeded",
+		log.Info("Exec Rows succeeded",
 			zap.String("changefeed", s.changefeed),
 			zap.Int("workerID", s.workerID),
-			zap.Int("numOfRows", dmls.rowCount))
+			zap.Int("numOfRows", dmls.rowCount),
+			zap.Duration("duration", time.Since(start)))
 		return nil
 	}, retry.WithBackoffBaseDelay(pmysql.BackoffBaseDelay.Milliseconds()),
 		retry.WithBackoffMaxDelay(pmysql.BackoffMaxDelay.Milliseconds()),
