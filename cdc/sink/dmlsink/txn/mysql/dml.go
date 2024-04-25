@@ -145,7 +145,7 @@ func prepareDelete(quoteTable string, cols []*model.Column, forceReplicate bool)
 			args = append(args, wargs[i])
 		}
 	}
-	builder.WriteString(" LIMIT 1")
+	// builder.WriteString(" LIMIT 1")
 	sql := builder.String()
 	return sql, args
 }
