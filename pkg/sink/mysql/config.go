@@ -48,7 +48,7 @@ const (
 	// defaultMaxMultiUpdateRowSize(1KB) defines the default value of MaxMultiUpdateRowSize
 	// When row average size is larger MaxMultiUpdateRowSize,
 	// disable multi update, otherwise enable multi update.
-	defaultMaxMultiUpdateRowSize = 1024
+	defaultMaxMultiUpdateRowSize = 102400
 	// The upper limit of max worker counts.
 	maxWorkerCount = 1024
 	// The upper limit of max txn rows.
