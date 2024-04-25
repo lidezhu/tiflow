@@ -227,7 +227,7 @@ func (s *mysqlBackend) Flush(ctx context.Context) (err error) {
 	}
 
 	dmls := s.prepareDMLs()
-	log.Debug("prepare DMLs", zap.String("changefeed", s.changefeed), zap.Any("rows", s.rows),
+	log.Info("prepare DMLs", zap.String("changefeed", s.changefeed), zap.Any("rows", s.rows),
 		zap.Strings("sqls", dmls.sqls), zap.Any("values", dmls.values))
 
 	start := time.Now()
@@ -438,6 +438,12 @@ func (s *mysqlBackend) batchSingleTxnDmls(
 	translateToInsert bool,
 ) (sqls []string, values [][]interface{}) {
 	insertRows, updateRows, deleteRows := s.groupRowsByType(event, tableInfo, !translateToInsert)
+	log.Info("batchSingleTxnDmls",
+		zap.String("changefeed", s.changefeed),
+		zap.Int("insertRows", len(insertRows)),
+		zap.Int("updateRows", len(updateRows)),
+		zap.Int("deleteRows", len(deleteRows)),
+		zap.Bool("isTiDB", s.cfg.IsTiDB))
 
 	// handle delete
 	if len(deleteRows) > 0 {
@@ -820,10 +826,11 @@ func (s *mysqlBackend) execDMLWithMaxRetries(pctx context.Context, dmls *prepare
 		if err != nil {
 			return errors.Trace(err)
 		}
-		log.Debug("Exec Rows succeeded",
+		log.Info("Exec Rows succeeded",
 			zap.String("changefeed", s.changefeed),
 			zap.Int("workerID", s.workerID),
-			zap.Int("numOfRows", dmls.rowCount))
+			zap.Int("numOfRows", dmls.rowCount),
+			zap.Bool("fallbackToSeqWay", fallbackToSeqWay))
 		return nil
 	}, retry.WithBackoffBaseDelay(pmysql.BackoffBaseDelay.Milliseconds()),
 		retry.WithBackoffMaxDelay(pmysql.BackoffMaxDelay.Milliseconds()),
