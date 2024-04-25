@@ -88,7 +88,7 @@ func GenDeleteSQL(changes ...*RowChange) (string, []interface{}) {
 	buf.Grow(1024)
 	buf.WriteString("DELETE FROM ")
 	buf.WriteString(first.targetTable.QuoteString())
-	buf.WriteString(" WHERE (")
+	buf.WriteString(" WHERE ")
 
 	allArgs := make([]interface{}, 0, len(changes)*CommonIndexColumnsCount)
 
@@ -99,7 +99,7 @@ func GenDeleteSQL(changes ...*RowChange) (string, []interface{}) {
 		args := c.genWhere(&buf)
 		allArgs = append(allArgs, args...)
 	}
-	buf.WriteString(")")
+	// buf.WriteString(")")
 	return buf.String(), allArgs
 }
 
