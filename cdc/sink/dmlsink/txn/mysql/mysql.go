@@ -206,6 +206,11 @@ func NewMySQLBackends(
 func (s *mysqlBackend) OnTxnEvent(event *dmlsink.TxnCallbackableEvent) (needFlush bool) {
 	s.events = append(s.events, event)
 	s.rows += len(event.Event.Rows)
+	log.Info("OnTxnEvent",
+		zap.String("changefeed", s.changefeed),
+		zap.Int("workerID", s.workerID),
+		zap.Int("rows", len(event.Event.Rows)),
+		zap.Int("maxRows", s.cfg.MaxTxnRow))
 	return s.rows >= s.cfg.MaxTxnRow
 }
 
