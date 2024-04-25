@@ -227,7 +227,7 @@ func (s *mysqlBackend) Flush(ctx context.Context) (err error) {
 	}
 
 	dmls := s.prepareDMLs()
-	log.Debug("prepare DMLs", zap.String("changefeed", s.changefeed), zap.Any("rows", s.rows),
+	log.Info("prepare DMLs", zap.String("changefeed", s.changefeed), zap.Any("rows", s.rows),
 		zap.Strings("sqls", dmls.sqls), zap.Any("values", dmls.values))
 
 	start := time.Now()
