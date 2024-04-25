@@ -210,6 +210,7 @@ func (s *mysqlBackend) OnTxnEvent(event *dmlsink.TxnCallbackableEvent) (needFlus
 		zap.String("changefeed", s.changefeed),
 		zap.Int("workerID", s.workerID),
 		zap.Int("rows", len(event.Event.Rows)),
+		zap.Int("totalRows", s.rows),
 		zap.Int("maxRows", s.cfg.MaxTxnRow))
 	return s.rows >= s.cfg.MaxTxnRow
 }
