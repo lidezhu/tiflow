@@ -227,7 +227,7 @@ func (s *mysqlBackend) Flush(ctx context.Context) (err error) {
 	}
 
 	dmls := s.prepareDMLs()
-	log.Debug("prepare DMLs", zap.String("changefeed", s.changefeed), zap.Any("rows", s.rows),
+	log.Info("prepare DMLs", zap.String("changefeed", s.changefeed), zap.Any("rows", s.rows),
 		zap.Strings("sqls", dmls.sqls), zap.Any("values", dmls.values))
 
 	start := time.Now()
@@ -531,6 +531,9 @@ func (s *mysqlBackend) prepareDMLs() *preparedDMLs {
 
 	// translateToInsert control the update and insert behavior.
 	translateToInsert := !s.cfg.SafeMode
+	log.Info("prepare DMLs", zap.String("changefeed", s.changefeed),
+		zap.Bool("safeMode", s.cfg.SafeMode),
+		zap.Bool("forceReplicate", s.cfg.ForceReplicate))
 
 	rowCount := 0
 	approximateSize := int64(0)
@@ -549,7 +552,7 @@ func (s *mysqlBackend) prepareDMLs() *preparedDMLs {
 		// the table it belongs to been replicating by TiCDC, which means it must not be
 		// replicated before, and there is no such row in downstream MySQL.
 		translateToInsert = translateToInsert && firstRow.CommitTs > firstRow.ReplicatingTs
-		log.Debug("translate to insert",
+		log.Info("translate to insert",
 			zap.String("changefeed", s.changefeed),
 			zap.Bool("translateToInsert", translateToInsert),
 			zap.Uint64("firstRowCommitTs", firstRow.CommitTs),
