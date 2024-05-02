@@ -64,9 +64,11 @@ while [ $i -le $retry_times ]; do
 	tikv_config_args=""
 	if [[ "$tidb_config" != "" ]]; then
 		tidb_config_args=" --tidb-config ${tidb_config}"
-	elif [[ "$pd_config" != "" ]]; then
+	fi
+	if [[ "$pd_config" != "" ]]; then
 		pd_config_args=" --pd-config ${pd_config}"
-	elif [[ "$tikv_config" != "" ]]; then
+	fi
+	if [[ "$tikv_config" != "" ]]; then
 		tikv_config_args=" --tikv-config ${tikv_config}"
 	fi
 	start_tidb_cluster_impl --workdir ${OUT_DIR} --multiple-upstream-pd ${multiple_upstream_pd} ${tidb_config_args} ${pd_config_args} ${tikv_config_args}

@@ -1,2 +1,10 @@
+[storage]
+# Disable creating a large temp file.
+reserve-space = "0MB"
+[rocksdb]
+max-open-files = 4096
+[raftdb]
+max-open-files = 4096
 [raftstore]
 raft-entry-max-size = 62914560
+sync-log = false
