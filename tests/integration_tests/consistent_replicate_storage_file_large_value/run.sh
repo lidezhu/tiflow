@@ -23,13 +23,10 @@ function run() {
 		return
 	fi
 
-	start_tidb_cluster --workdir $WORK_DIR --tidb-config $CUR/conf/tidb.toml
+	start_tidb_cluster --workdir $WORK_DIR --tidb-config $CUR/conf/tidb.toml --tikv-config $CUR/conf/tikv.toml
 
 	cd $WORK_DIR
 	run_sql "set @@global.tidb_enable_exchange_partition=on" ${DOWN_TIDB_HOST} ${DOWN_TIDB_PORT}
-
-	run_sql "set config tikv `raftstore.raft-entry-max-size`=62914560" ${DOWN_TIDB_HOST} ${DOWN_TIDB_PORT}
-	run_sql "set config tikv `raftstore.raft-entry-max-size`=62914560" ${UP_TIDB_HOST} ${UP_TIDB_PORT}
 
 	run_cdc_server --workdir $WORK_DIR --binary $CDC_BINARY
 
