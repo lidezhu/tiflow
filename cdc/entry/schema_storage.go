@@ -389,8 +389,10 @@ func (s *schemaStorage) DoGC(ts uint64) (lastSchemaTs uint64) {
 // job is changed to *done* (before change to *synced*)
 // At state *done*, it will be always and only changed to *synced*.
 func (s *schemaStorage) skipJob(job *timodel.Job) bool {
-	log.Debug("handle DDL new commit",
+	log.Info("handle DDL new commit",
 		zap.String("DDL", job.Query), zap.Stringer("job", job),
+		zap.Any("tableInfo", job.BinlogInfo.TableInfo),
+		zap.Any("dbInfo", job.BinlogInfo.DBInfo),
 		zap.String("namespace", s.id.Namespace),
 		zap.String("changefeed", s.id.ID),
 		zap.String("role", s.role.String()))
