@@ -491,6 +491,7 @@ func (w *regionWorker) eventHandler(ctx context.Context) error {
 			atomic.AddInt32(&w.inputPendingEvents, -int32(len(events)))
 
 			if highWatermarkMet {
+				log.Info("region worker high watermark met")
 				// All events in one batch can be hashed into one handle slot.
 				slot := w.inputCalcSlot(events[0].regionID)
 				eventsX := make([]interface{}, 0, len(events))
