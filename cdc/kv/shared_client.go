@@ -741,6 +741,12 @@ func (s *SharedClient) doHandleError(ctx context.Context, errInfo regionErrorInf
 		s.scheduleRangeRequest(ctx, errInfo.span, errInfo.subscribedTable)
 		return nil
 	case *sendRequestToStoreErr:
+		log.Warn("sendRequestToStoreErr",
+			zap.String("namespace", s.changefeed.Namespace),
+			zap.String("changefeed", s.changefeed.ID),
+			zap.Any("subscriptionID", errInfo.subscribedTable.subscriptionID),
+			zap.Uint64("regionID", errInfo.verID.GetID()),
+			zap.Int64("tableID", errInfo.subscribedTable.span.TableID))
 		metricStoreSendRequestErr.Inc()
 		bo := tikv.NewBackoffer(ctx, tikvRequestMaxBackoff)
 		s.regionCache.OnSendFail(bo, errInfo.rpcCtx, regionScheduleReload, err)
