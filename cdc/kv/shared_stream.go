@@ -316,8 +316,10 @@ func (s *requestedStream) send(ctx context.Context, c *SharedClient, rs *request
 		if region.isStopped() {
 			if s.multiplexing != nil {
 				req := &cdcpb.ChangeDataRequest{
-					// RequestId: uint64(subscriptionID),
-					Request: &cdcpb.ChangeDataRequest_Deregister_{},
+					RequestId: uint64(subscriptionID),
+					Request: &cdcpb.ChangeDataRequest_Deregister_{
+						Deregister: &cdcpb.ChangeDataRequest_Deregister{},
+					},
 				}
 				if err = s.multiplexing.Client().Send(req); err != nil {
 					log.Warn("event feed send deregister request to grpc stream failed",
